@@ -8,6 +8,7 @@ class Registerview extends StatelessWidget {
   final loginpasswordC = TextEditingController();
   final regispasswordC = TextEditingController();
   final regisconfirmPasswordC = TextEditingController();
+  final regisusernameC = TextEditingController();
   final controller = Get.put(SignInUpController());
 
   @override
@@ -54,6 +55,7 @@ class Registerview extends StatelessWidget {
                           child: TabBarView(
                             children: [
                               SingleChildScrollView(
+                                key: PageStorageKey('tab-masuk'),
                                 child: Padding(
                                   padding: EdgeInsets.all(16),
                                   child: Column(
@@ -73,6 +75,7 @@ class Registerview extends StatelessWidget {
                                         decoration: InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Email',
+                                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
                                       SizedBox(height: 20),
@@ -82,13 +85,19 @@ class Registerview extends StatelessWidget {
                                         decoration: InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Sandi',
+                                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
                                       SizedBox(height: 20),
                                       Container(
                                         width: double.infinity,
                                         child: TextButton(
-                                          onPressed: () {},
+                                          onPressed: () {
+                                            controller.signIn(
+                                              loginemailC.text,
+                                              loginpasswordC.text,
+                                            );
+                                          },
                                           child: Text(
                                             "Masuk",
                                             style: TextStyle(color: Colors.white),
@@ -113,6 +122,7 @@ class Registerview extends StatelessWidget {
                                 ),
                               ),
                               SingleChildScrollView(
+                                key: PageStorageKey('tab-daftar'),
                                 child: Padding(
                                   padding: EdgeInsets.all(16),
                                   child: Column(
@@ -128,10 +138,20 @@ class Registerview extends StatelessWidget {
                                       ),
                                       SizedBox(height: 40),
                                       TextField(
+                                        controller: regisusernameC,
+                                        decoration: InputDecoration(
+                                          border: OutlineInputBorder(),
+                                          labelText: 'username',
+                                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                                        ),
+                                      ),
+                                      SizedBox(height: 20),
+                                      TextField(
                                         controller: regisemailC,
                                         decoration: InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Email',
+                                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
                                       SizedBox(height: 20),
@@ -141,6 +161,7 @@ class Registerview extends StatelessWidget {
                                         decoration: InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Password',
+                                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
                                       SizedBox(height: 20),
@@ -150,6 +171,7 @@ class Registerview extends StatelessWidget {
                                         decoration: InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Confirm Password',
+                                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
                                       SizedBox(height: 20),
@@ -181,7 +203,12 @@ class Registerview extends StatelessWidget {
                                                 colorText: Colors.white,
                                               );
                                             } else {
-                                              // Call signUp logic here
+                                              controller.signUp(
+                                                regisemailC.text,
+                                                regisusernameC.text,
+                                                regispasswordC.text,
+                                                regisconfirmPasswordC.text,
+                                              );
                                             }
                                           },
                                           child: Text(
@@ -222,3 +249,4 @@ class Registerview extends StatelessWidget {
     );
   }
 }
+

@@ -154,9 +154,11 @@ def login():
         if result['success']:
             return jsonify(result), 200
         else:
+            print('Login gagal:', result['message'])
             return jsonify(result), 401
     
     except Exception as e:
+        print(f'Error during login: {str(e)}')
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
