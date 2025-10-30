@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
-import 'login_register_view.dart';
+import '../routes.dart';
 
 class SignInUpController extends GetxController {
   var isLoading = false.obs;
@@ -32,15 +32,40 @@ class SignInUpController extends GetxController {
         // Decode balasan JSON dari server
         final responseData = jsonDecode(response.body);
         print("Respon server: ${responseData['message']}");
+
+        // Navigate to home page
+        Get.offAllNamed(AppRoutes.home);
+
+        Get.snackbar(
+          'Login Berhasil',
+          'Selamat datang!',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
       } else {
         // Gagal
         print("Gagal mengirim data. Status code: ${response.statusCode}");
         print("Pesan error: ${response.body}");
+
+        final responseData = jsonDecode(response.body);
+        Get.snackbar(
+          'Login Gagal',
+          responseData['message'] ?? 'Email atau password salah',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
 
     }catch(e){
-      Get.snackbar('Error', 'Failed to connect to server',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Failed to connect to server',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       isLoading.value = false;
       return;
     }
@@ -80,15 +105,40 @@ class SignInUpController extends GetxController {
         // Decode balasan JSON dari server
         final responseData = jsonDecode(response.body);
         print("Respon server: ${responseData['message']}");
+
+        // Navigate to home page
+        Get.offAllNamed(AppRoutes.home);
+
+        Get.snackbar(
+          'Registrasi Berhasil',
+          'Akun Anda berhasil dibuat!',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
       } else {
         // Gagal
         print("Gagal mengirim data. Status code: ${response.statusCode}");
         print("Pesan error: ${response.body}");
+
+        final responseData = jsonDecode(response.body);
+        Get.snackbar(
+          'Registrasi Gagal',
+          responseData['message'] ?? 'Terjadi kesalahan, coba lagi',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
 
     }catch(e){
-      Get.snackbar('Error', 'Failed to connect to server',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Failed to connect to server',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       print("error : $e");
       isLoading.value = false;
       return;

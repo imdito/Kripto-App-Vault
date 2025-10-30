@@ -93,10 +93,30 @@ class Registerview extends StatelessWidget {
                                         width: double.infinity,
                                         child: TextButton(
                                           onPressed: () {
-                                            controller.signIn(
-                                              loginemailC.text,
-                                              loginpasswordC.text,
-                                            );
+                                            final email = loginemailC.text;
+                                            final password = loginpasswordC.text;
+                                            if (!GetUtils.isEmail(email)) {
+                                              Get.snackbar(
+                                                "Login Gagal",
+                                                "Format email yang Anda masukkan tidak valid.",
+                                                snackPosition: SnackPosition.BOTTOM,
+                                                backgroundColor: Colors.red,
+                                                colorText: Colors.white,
+                                              );
+                                            } else if (password.isEmpty) {
+                                              Get.snackbar(
+                                                "Login Gagal",
+                                                "Password tidak boleh kosong.",
+                                                snackPosition: SnackPosition.BOTTOM,
+                                                backgroundColor: Colors.red,
+                                                colorText: Colors.white,
+                                              );
+                                            } else {
+                                              controller.signIn(
+                                                loginemailC.text,
+                                                loginpasswordC.text,
+                                              );
+                                            }
                                           },
                                           child: Text(
                                             "Masuk",
