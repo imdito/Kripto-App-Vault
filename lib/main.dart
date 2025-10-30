@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
-import 'LoginRegister/login_register_view.dart';
-import 'LoginRegister/signin_up_controller.dart';
+import 'routes.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
@@ -19,7 +18,8 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.green,
         primaryColor: Color(0xFF117f4e),
       ),
-      home: Registerview(),
+      initialRoute: AppRoutes.login,
+      getPages: AppPages.routes,
     );
   }
 }
