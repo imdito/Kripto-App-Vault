@@ -166,7 +166,7 @@ class AuthService:
         
         # Insert user baru
         insert_query = """
-        INSERT INTO users (username, email, password) 
+        INSERT INTO users (username, email, password_hash) 
         VALUES (%s, %s, %s)
         """
         
@@ -196,7 +196,7 @@ class AuthService:
             Dictionary dengan status, message, dan data user (jika berhasil)
         """
         # Cari user berdasarkan email
-        query = "SELECT id, username, email, password FROM users WHERE email = %s"
+        query = "SELECT id, username, email, password_hash FROM users WHERE email = %s"
         result = self.db.execute_read_dict(query, (email,))
         
         if not result:
@@ -208,7 +208,7 @@ class AuthService:
         user = result[0]
         
         # Verifikasi password dengan MD5
-        if verify_password_md5(password, user['password']):
+        if verify_password_md5(password, user.get('password_hash')):
             return {
                 'success': True,
                 'message': 'Login berhasil',
@@ -245,7 +245,7 @@ class AuthService:
             }
         
         # Ambil data user
-        query = "SELECT password FROM users WHERE id = %s"
+        query = "SELECT password_hash FROM users WHERE id = %s"
         result = self.db.execute_read_dict(query, (user_id,))
         
         if not result:
@@ -257,7 +257,7 @@ class AuthService:
         user = result[0]
         
         # Verifikasi password lama
-        if not verify_password_md5(old_password, user['password']):
+        if not verify_password_md5(old_password, user.get('password_hash')):
             return {
                 'success': False,
                 'message': 'Password lama salah'
@@ -267,7 +267,7 @@ class AuthService:
         new_hashed = hash_password_md5(new_password)
         
         # Update password
-        update_query = "UPDATE users SET password = %s WHERE id = %s"
+        update_query = "UPDATE users SET password_hash = %s WHERE id = %s"
         success = self.db.execute_query(update_query, (new_hashed, user_id))
         
         if success:
