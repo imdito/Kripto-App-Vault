@@ -2,19 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kripto_app/homePage/home_page_controller.dart';
 
+import '../LoginRegister/signin_up_controller.dart';
 import 'home_page_model.dart';
 
 
 // Gunakan GetView untuk akses controller secara otomatis
 class HomePageView extends GetView<HomePageController> {
-  const HomePageView({Key? key}) : super(key: key);
+    String username = Get.arguments["username"] ?? "User";
+    String email = Get.arguments["email"] ?? "email@email.com";
+    int id = Get.arguments["id"] ?? 0;
+
+  HomePageView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       // --- APPBAR ---
       appBar: AppBar(
-        title: const Text("Brankas Saya 🔐"),
+        title: Text("Brankas id: ${id}", ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -65,17 +70,25 @@ class HomePageView extends GetView<HomePageController> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const UserAccountsDrawerHeader(
-            accountName: Text("User SecureVault"), // Ganti dengan data user
-            accountEmail: Text("user@email.com"), // Ganti
-            currentAccountPicture: CircleAvatar(
+          UserAccountsDrawerHeader(
+            accountName: Text(username), // Ganti dengan data user
+            accountEmail: Text(email), // Ganti
+            currentAccountPicture: const CircleAvatar(
               child: Text("U"),
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.security_outlined),
-            title: const Text('Pengaturan Keamanan'),
-            onTap: () { /* Navigasi ke settings */ },
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Pengaturan Profil'),
+            onTap: (){
+              Get.toNamed('/profile', arguments:
+              {
+                "id": id,
+                "username": username,
+                "email": email
+              }
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.info_outline),
