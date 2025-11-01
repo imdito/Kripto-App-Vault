@@ -27,8 +27,8 @@ message_service = MessageService(db)
 def index():
     """Homepage API"""
     return jsonify({
-        'message': 'Kripto App API - MD5 Password Hashing + Steganography + File Encryption',
-        'version': '3.0',
+        'message': 'Kripto App API - MD5 + Steganography + File Encryption + Super Encrypt',
+        'version': '4.0',
         'security': 'MD5 Password Hashing',
         'endpoints': {
             'users': '/api/users',
@@ -39,6 +39,22 @@ def index():
             'test_db': '/api/test-db',
             'hash_password': '/api/hash-password',
             # Steganography Stateless API (No Database!)
+            'stego_encode': '/api/stego/encode',  # Upload gambar + pesan → return gambar hasil
+            'stego_decode': '/api/stego/decode',  # Upload gambar → return pesan
+            # File Encryption Stateless API (No Database!)
+            'file_encrypt': '/api/file/encrypt',  # Upload file + password → return encrypted file
+            'file_decrypt': '/api/file/decrypt',  # Upload encrypted file + password → return original file
+            # Super Encrypt Stateless API (No Database!)
+            'super_encrypt': '/api/super-encrypt',  # Encrypt text: Caesar → Vigenere → DES
+            'super_decrypt': '/api/super-decrypt',  # Decrypt text: DES → Vigenere → Caesar
+            # Messaging API
+            'send_message': '/api/messages/send',  # POST - Kirim pesan
+            'inbox': '/api/messages/inbox',  # GET - Pesan masuk
+            'sent_messages': '/api/messages/sent',  # GET - Pesan terkirim
+            'message_detail': '/api/messages/<id>',  # GET - Detail pesan
+            'delete_message': '/api/messages/<id>',  # DELETE - Hapus pesan
+            'conversation': '/api/messages/conversation/<user_id>',  # GET - Percakapan dengan user
+            'search_messages': '/api/messages/search',  # GET - Cari pesan
             'stego_encode': '/api/stego/encode',  # Upload gambar + pesan → return gambar hasil
             'stego_decode': '/api/stego/decode',  # Upload gambar → return pesan
             # File Encryption Stateless API (No Database!)
@@ -996,6 +1012,181 @@ def file_decrypt_stateless():
         }), 500
 
 
+# ==================== SUPER ENCRYPT (STATELESS) ====================
+
+@app.route('/api/super-encrypt', methods=['POST'])
+def super_encrypt_text():
+    """
+    Super Encrypt - Triple layer encryption (Caesar → Vigenere → DES)
+    Stateless API - tidak menyimpan ke database
+    
+    Request Body (JSON):
+    {
+        "text": "Hello World",
+        "caesar_shift": 3,          // Optional, default: 3
+        "vigenere_key": "SECRET",   // Optional, default: "KEY"
+        "des_key": "mykey123"       // Optional, default: "secret12"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Text berhasil dienkripsi dengan Super Encrypt",
+        "data": {
+            "ciphertext": "base64_encrypted_text",
+            "iv": "base64_iv",
+            "original_length": 11,
+            "algorithm": "Caesar → Vigenere → DES"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required field
+        if not data or 'text' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Field "text" wajib diisi'
+            }), 400
+        
+        text = data['text']
+        caesar_shift = data.get('caesar_shift', 3)
+        vigenere_key = data.get('vigenere_key', 'KEY')
+        des_key = data.get('des_key', 'secret12')
+        
+        print(f"🔐 Super Encrypting: {text}")
+        print(f"   Caesar Shift: {caesar_shift}")
+        print(f"   Vigenere Key: {vigenere_key}")
+        print(f"   DES Key: {des_key}")
+        
+        # Import Super Encrypt
+        from utils.super_encrypt import SuperEncrypt
+        
+        # Encrypt with triple layer
+        cipher = SuperEncrypt(caesar_shift, vigenere_key, des_key)
+        result = cipher.encrypt(text)
+        
+        print(f"✅ Super Encryption successful!")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Text berhasil dienkripsi dengan Super Encrypt',
+            'data': {
+                'ciphertext': result['ciphertext'],
+                'iv': result['iv'],
+                'original_length': len(text),
+                'algorithm': 'Caesar → Vigenere → DES',
+                'note': 'Simpan ciphertext, iv, dan semua keys untuk dekripsi'
+            }
+        }), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'ENCRYPTION_ERROR',
+            'message': f'Error saat super encrypt: {str(e)}'
+        }), 500
+
+
+@app.route('/api/super-decrypt', methods=['POST'])
+def super_decrypt_text():
+    """
+    Super Decrypt - Reverse triple layer decryption (DES → Vigenere → Caesar)
+    Stateless API - tidak menyimpan ke database
+    
+    Request Body (JSON):
+    {
+        "ciphertext": "base64_encrypted_text",
+        "iv": "base64_iv",
+        "caesar_shift": 3,          // Must match encryption
+        "vigenere_key": "SECRET",   // Must match encryption
+        "des_key": "mykey123"       // Must match encryption
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Text berhasil didekripsi",
+        "data": {
+            "plaintext": "Hello World",
+            "length": 11,
+            "algorithm": "DES → Vigenere → Caesar"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': 'Request body tidak boleh kosong'
+            }), 400
+        
+        required_fields = ['ciphertext', 'iv', 'caesar_shift', 'vigenere_key', 'des_key']
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'message': f'Field wajib: {", ".join(missing_fields)}'
+            }), 400
+        
+        ciphertext = data['ciphertext']
+        iv = data['iv']
+        caesar_shift = data['caesar_shift']
+        vigenere_key = data['vigenere_key']
+        des_key = data['des_key']
+        
+        print(f"🔓 Super Decrypting...")
+        print(f"   Caesar Shift: {caesar_shift}")
+        print(f"   Vigenere Key: {vigenere_key}")
+        print(f"   DES Key: {des_key}")
+        
+        # Import Super Encrypt
+        from utils.super_encrypt import SuperEncrypt
+        
+        # Decrypt with triple layer (reverse)
+        cipher = SuperEncrypt(caesar_shift, vigenere_key, des_key)
+        encrypted_data = {
+            'ciphertext': ciphertext,
+            'iv': iv
+        }
+        plaintext = cipher.decrypt(encrypted_data)
+        
+        print(f"✅ Super Decryption successful!")
+        print(f"   Plaintext: {plaintext}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Text berhasil didekripsi',
+            'data': {
+                'plaintext': plaintext,
+                'length': len(plaintext),
+                'algorithm': 'DES → Vigenere → Caesar'
+            }
+        }), 200
+    
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error_type': 'WRONG_KEY',
+            'message': 'Key atau password salah',
+            'details': str(e)
+        }), 400
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'DECRYPTION_ERROR',
+            'message': f'Error saat super decrypt: {str(e)}'
+        }), 500
+
+
 # ==================== SERVER STARTUP ====================
 
 if __name__ == '__main__':
@@ -1005,6 +1196,8 @@ if __name__ == '__main__':
     print("📌 Features:")
     print("   - User Authentication (MD5)")
     print("   - Stateless Steganography (LSB)")
+    print("   - Stateless File Encryption (AES)")
+    print("   - Stateless Super Encrypt (Caesar+Vigenere+DES)")
     print("   - Messaging System (Email-like)")
     config.display_config()
     print("="*50 + "\n")
