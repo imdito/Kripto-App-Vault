@@ -27,8 +27,8 @@ message_service = MessageService(db)
 def index():
     """Homepage API"""
     return jsonify({
-        'message': 'Kripto App API - MD5 Password Hashing + Steganography',
-        'version': '2.0',
+        'message': 'Kripto App API - MD5 Password Hashing + Steganography + File Encryption',
+        'version': '3.0',
         'security': 'MD5 Password Hashing',
         'endpoints': {
             'users': '/api/users',
@@ -39,8 +39,11 @@ def index():
             'test_db': '/api/test-db',
             'hash_password': '/api/hash-password',
             # Steganography Stateless API (No Database!)
-            'stego_encode': '/api/stego/encode',  # NEW! Upload gambar + pesan → return gambar hasil
-            'stego_decode': '/api/stego/decode',  # NEW! Upload gambar → return pesan
+            'stego_encode': '/api/stego/encode',  # Upload gambar + pesan → return gambar hasil
+            'stego_decode': '/api/stego/decode',  # Upload gambar → return pesan
+            # File Encryption Stateless API (No Database!)
+            'file_encrypt': '/api/file/encrypt',  # Upload file + password → return encrypted file
+            'file_decrypt': '/api/file/decrypt',  # Upload encrypted file + password → return original file
             # Messaging API
             'send_message': '/api/messages/send',  # POST - Kirim pesan
             'inbox': '/api/messages/inbox',  # GET - Pesan masuk
@@ -783,6 +786,213 @@ def search_messages():
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
+        }), 500
+
+
+# ==================== FILE ENCRYPTION API (STATELESS) ====================
+
+@app.route('/api/file/encrypt', methods=['POST'])
+def file_encrypt_stateless():
+    """
+    🔐 STATELESS FILE ENCRYPT - Encrypt file tanpa save ke database/server
+    
+    User upload file (base64) + password → return encrypted file (base64)
+    
+    Request Body:
+    {
+        "file_data": "base64_encoded_file",
+        "password": "mypassword123",
+        "filename": "dokumen.pdf"  (optional)
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "File berhasil dienkripsi",
+        "data": {
+            "encrypted_file": "base64_encrypted_data",
+            "original_size": 12345,
+            "encrypted_size": 12368,
+            "algorithm": "AES-256-CBC",
+            "filename": "dokumen.pdf.enc"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validasi input
+        if not data or not data.get('file_data') or not data.get('password'):
+            return jsonify({
+                'success': False,
+                'message': 'file_data dan password harus diisi'
+            }), 400
+        
+        file_base64 = data['file_data']
+        password = data['password']
+        filename = data.get('filename', 'file.enc')
+        
+        # Clean base64 string
+        if isinstance(file_base64, str):
+            if 'base64,' in file_base64:
+                file_base64 = file_base64.split('base64,')[1]
+            file_base64 = file_base64.strip().replace('\n', '').replace('\r', '')
+        
+        print(f"🔐 Encrypting file with password...")
+        
+        # Import AES encryption
+        from utils.aes_file_encryption import AESFileEncryption
+        import base64
+        
+        # Decode base64 to bytes
+        file_bytes = base64.b64decode(file_base64)
+        original_size = len(file_bytes)
+        
+        # Create AES cipher
+        aes = AESFileEncryption(password)
+        
+        # Encrypt (manual encryption tanpa file)
+        from Crypto.Cipher import AES
+        from Crypto.Util.Padding import pad
+        
+        cipher = AES.new(aes.key, AES.MODE_CBC)
+        ciphertext = cipher.encrypt(pad(file_bytes, AES.block_size))
+        
+        # Combine IV + ciphertext
+        encrypted_bytes = cipher.iv + ciphertext
+        
+        # Encode to base64
+        encrypted_base64 = base64.b64encode(encrypted_bytes).decode('utf-8')
+        
+        print(f"✅ File encrypted successfully!")
+        print(f"📊 Original: {original_size} bytes → Encrypted: {len(encrypted_bytes)} bytes")
+        
+        return jsonify({
+            'success': True,
+            'message': 'File berhasil dienkripsi',
+            'data': {
+                'encrypted_file': encrypted_base64,
+                'original_size': original_size,
+                'encrypted_size': len(encrypted_bytes),
+                'algorithm': 'AES-256-CBC',
+                'filename': filename + '.enc',
+                'note': 'Download file dengan decode base64 dan simpan dengan extension .enc'
+            }
+        }), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'ENCRYPTION_ERROR',
+            'message': f'Error saat enkripsi: {str(e)}'
+        }), 500
+
+
+@app.route('/api/file/decrypt', methods=['POST'])
+def file_decrypt_stateless():
+    """
+    🔓 STATELESS FILE DECRYPT - Decrypt file tanpa save ke database
+    
+    User upload encrypted file (base64) + password → return original file (base64)
+    
+    Request Body:
+    {
+        "file_data": "base64_encrypted_file",
+        "password": "mypassword123",
+        "filename": "dokumen.pdf.enc"  (optional)
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "File berhasil didekripsi",
+        "data": {
+            "decrypted_file": "base64_original_data",
+            "decrypted_size": 12345,
+            "algorithm": "AES-256-CBC",
+            "filename": "dokumen.pdf"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validasi input
+        if not data or not data.get('file_data') or not data.get('password'):
+            return jsonify({
+                'success': False,
+                'message': 'file_data dan password harus diisi'
+            }), 400
+        
+        file_base64 = data['file_data']
+        password = data['password']
+        filename = data.get('filename', 'file.enc')
+        
+        # Clean base64 string
+        if isinstance(file_base64, str):
+            if 'base64,' in file_base64:
+                file_base64 = file_base64.split('base64,')[1]
+            file_base64 = file_base64.strip().replace('\n', '').replace('\r', '')
+        
+        print(f"🔓 Decrypting file with password...")
+        
+        # Import AES encryption
+        from utils.aes_file_encryption import AESFileEncryption
+        import base64
+        from Crypto.Cipher import AES
+        from Crypto.Util.Padding import unpad
+        
+        # Decode base64 to bytes
+        encrypted_bytes = base64.b64decode(file_base64)
+        
+        # Extract IV (first 16 bytes) and ciphertext
+        iv = encrypted_bytes[:16]
+        ciphertext = encrypted_bytes[16:]
+        
+        # Create AES cipher
+        aes = AESFileEncryption(password)
+        cipher = AES.new(aes.key, AES.MODE_CBC, iv)
+        
+        # Decrypt
+        decrypted_bytes = unpad(cipher.decrypt(ciphertext), AES.block_size)
+        
+        # Encode to base64
+        decrypted_base64 = base64.b64encode(decrypted_bytes).decode('utf-8')
+        
+        # Remove .enc extension dari filename
+        original_filename = filename[:-4] if filename.endswith('.enc') else filename
+        
+        print(f"✅ File decrypted successfully!")
+        print(f"📊 Decrypted size: {len(decrypted_bytes)} bytes")
+        
+        return jsonify({
+            'success': True,
+            'message': 'File berhasil didekripsi',
+            'data': {
+                'decrypted_file': decrypted_base64,
+                'decrypted_size': len(decrypted_bytes),
+                'algorithm': 'AES-256-CBC',
+                'filename': original_filename,
+                'note': 'Download file dengan decode base64'
+            }
+        }), 200
+    
+    except ValueError as e:
+        # Wrong password or corrupted data
+        return jsonify({
+            'success': False,
+            'error_type': 'WRONG_PASSWORD',
+            'message': 'Password salah atau file rusak',
+            'details': str(e)
+        }), 400
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'DECRYPTION_ERROR',
+            'message': f'Error saat dekripsi: {str(e)}'
         }), 500
 
 
