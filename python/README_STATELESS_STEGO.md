@@ -190,6 +190,7 @@ Response:
 ```yaml
 dependencies:
   image_picker: ^1.0.0
+  image_gallery_saver: ^2.0.3  # For saving to Gallery
   http: ^1.1.0
   path_provider: ^2.1.0
 ```
@@ -199,10 +200,11 @@ dependencies:
 ```dart
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 class StatelessStegoPage extends StatefulWidget {
   @override
@@ -262,27 +264,31 @@ class _StatelessStegoPageState extends State<StatelessStegoPage> {
     }
   }
 
-  // Save base64 image to device storage
+  // Save base64 image to Gallery
   Future<void> _saveEncodedImage(String base64Image) async {
     try {
       // Decode base64 to bytes
       final bytes = base64Decode(base64Image);
 
-      // Get directory
-      final directory = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final filePath = '${directory.path}/stego_$timestamp.png';
+      // Save to Gallery (visible to user!)
+      final result = await ImageGallerySaver.saveImage(
+        Uint8List.fromList(bytes),
+        quality: 100,
+        name: "stego_${DateTime.now().millisecondsSinceEpoch}",
+      );
 
-      // Save to file
-      final file = File(filePath);
-      await file.writeAsBytes(bytes);
-
-      print('✅ Saved to: $filePath');
-      
-      // Optional: Show dialog with file path
-      _showDialog('Success', 'Image saved to:\n$filePath');
+      if (result['isSuccess']) {
+        print('✅ Saved to Gallery: ${result['filePath']}');
+        // Android: /storage/emulated/0/Pictures/stego_xxx.png
+        // iOS: Photo Library
+        
+        _showDialog('Success', 'Gambar berhasil disimpan ke Gallery!\nBisa dilihat di Photos/Gallery app.');
+      } else {
+        throw Exception('Failed to save image');
+      }
     } catch (e) {
       print('❌ Error saving image: $e');
+      _showError('Gagal menyimpan gambar: $e');
     }
   }
 
@@ -460,13 +466,15 @@ class _StatelessStegoPageState extends State<StatelessStegoPage> {
 6. Server encode pesan ke gambar (LSB)
 7. Return gambar hasil (base64)
    ↓
-8. Flutter decode base64 → save ke storage
-9. User bisa share gambar hasil!
+8. Flutter decode base64 → save ke Gallery
+   📸 Lokasi: /storage/emulated/0/Pictures/stego_xxx.png (Android)
+   📸 Lokasi: Photo Library (iOS)
+9. User bisa lihat di Gallery dan share!
 ```
 
 ### **Decode Flow:**
 ```
-1. User pilih gambar steganografi
+1. User pilih gambar steganografi dari Gallery
 2. Tap "Decode Message"
    ↓
 3. Flutter convert gambar ke base64
@@ -477,6 +485,16 @@ class _StatelessStegoPageState extends State<StatelessStegoPage> {
    ↓
 7. Flutter tampilkan pesan di dialog
 ```
+
+### **📍 Lokasi File di HP:**
+
+| Platform | Path | Akses |
+|----------|------|-------|
+| **Android** | `/storage/emulated/0/Pictures/stego_xxx.png` | ✅ Visible di Gallery app |
+| **iOS** | Photo Library (managed by system) | ✅ Visible di Photos app |
+| ~~App Private~~ | ~~`/data/.../app_flutter/`~~ | ❌ User tidak bisa akses |
+
+**✅ Recommended:** Gunakan `image_gallery_saver` untuk simpan ke Gallery!
 
 ---
 
