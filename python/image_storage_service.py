@@ -23,12 +23,18 @@ class ImageStorageService:
         """
         self.db = db_connection
         self.stego = Steganography()
-        self.upload_folder = upload_folder
         
-        # Buat folder uploads jika belum ada
-        if not os.path.exists(upload_folder):
-            os.makedirs(upload_folder)
-            print(f"✅ Created upload folder: {upload_folder}")
+        # Convert to absolute path untuk menghindari masalah relative path
+        if not os.path.isabs(upload_folder):
+            # Dapatkan directory script saat ini
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            self.upload_folder = os.path.join(current_dir, upload_folder)
+        else:
+            self.upload_folder = upload_folder
+        
+        # Buat folder uploads jika belum ada (use exist_ok=True)
+        os.makedirs(self.upload_folder, exist_ok=True)
+        print(f"✅ Upload folder ready: {self.upload_folder}")
     
     def process_and_save_image(self, user_id, image_base64, secret_message, original_filename=None):
         """
@@ -55,6 +61,14 @@ class ImageStorageService:
                     'success': False,
                     'message': 'Image dan secret message harus diisi'
                 }
+            
+            # Clean base64 string (remove data:image prefix if exists)
+            if isinstance(image_base64, str):
+                # Remove "data:image/...;base64," prefix
+                if 'base64,' in image_base64:
+                    image_base64 = image_base64.split('base64,')[1]
+                # Remove whitespace and newlines
+                image_base64 = image_base64.strip().replace('\n', '').replace('\r', '')
             
             # Validasi user exists
             user_check = self.db.execute_read_one(

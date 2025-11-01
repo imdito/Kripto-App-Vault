@@ -483,8 +483,8 @@ def serve_uploaded_file(filename):
     Example: GET /uploads/1_20251031_120000_abc123.png
     """
     try:
-        upload_folder = os.path.join(os.getcwd(), 'uploads')
-        return send_from_directory(upload_folder, filename)
+        # Gunakan upload_folder yang sama dengan ImageStorageService
+        return send_from_directory(image_service.upload_folder, filename)
     except Exception as e:
         return jsonify({
             'success': False,
@@ -497,6 +497,9 @@ if __name__ == '__main__':
     print("🚀 Starting Kripto App API Server")
     print("="*50)
     config.display_config()
+    print(f"📁 Upload folder: {image_service.upload_folder}")
+    print(f"📁 Folder exists: {os.path.exists(image_service.upload_folder)}")
+    print("="*50 + "\n")
     
     app.run(
         host=config.flask_host,
