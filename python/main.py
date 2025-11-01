@@ -1,15 +1,13 @@
 """
 Login & Register API
-Flask API untuk autentikasi user dengan MD5 password hashing
+Flask API untuk autentikasi user dengan MD5 password hashing + Stateless Steganography
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from connection import get_db_connection
 from config import config
 from auth import AuthService, hash_password_md5, validate_email
-from image_storage_service import ImageStorageService
 import traceback
-import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.secret_key
@@ -20,16 +18,13 @@ db = get_db_connection(**config.get_db_config())
 # Inisialisasi Auth Service
 auth_service = AuthService(db)
 
-# Inisialisasi Image Storage Service (local storage)
-image_service = ImageStorageService(db, upload_folder='uploads')
-
 
 @app.route('/')
 def index():
     """Homepage API"""
     return jsonify({
         'message': 'Kripto App API - MD5 Password Hashing + Steganography',
-        'version': '1.0',
+        'version': '2.0',
         'security': 'MD5 Password Hashing',
         'endpoints': {
             'users': '/api/users',
@@ -39,12 +34,9 @@ def index():
             'change_password': '/api/change-password',
             'test_db': '/api/test-db',
             'hash_password': '/api/hash-password',
-            'stego_upload': '/api/stego/upload',
-            'stego_gallery': '/api/stego/gallery',
-            'stego_list': '/api/stego/images/<user_id>',
-            'stego_download': '/api/stego/image/<image_id>',
-            'stego_decode': '/api/stego/decode/<image_id>',
-            'stego_delete': '/api/stego/image/<image_id>',
+            # Steganography Stateless API (No Database!)
+            'stego_encode': '/api/stego/encode',  # NEW! Upload gambar + pesan → return gambar hasil
+            'stego_decode': '/api/stego/decode',  # NEW! Upload gambar → return pesan
             'test': '/tes/<name>'
         }
     })
@@ -57,6 +49,186 @@ def test_endpoint(koneksi):
         'message': f"Hello, {koneksi}!",
         'status': 'success'
     })
+
+
+# ==================== STEGANOGRAPHY STATELESS API ====================
+# No Database! No File Storage! Pure Processing Only!
+
+@app.route('/api/stego/encode', methods=['POST'])
+def stego_encode_stateless():
+    """
+    🎯 STATELESS ENCODE - Encode message ke gambar tanpa save ke database/server
+    
+    User upload gambar + pesan → return gambar hasil (base64) → user download sendiri
+    
+    Request Body:
+    {
+        "image_data": "base64_encoded_image",
+        "secret_message": "pesan rahasia"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Pesan berhasil disembunyikan dalam gambar",
+        "data": {
+            "encoded_image": "base64_encoded_result_image",
+            "original_size": 1920x1080,
+            "message_length": 18,
+            "capacity_used": "0.002%",
+            "format": "PNG"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validasi input
+        if not data or not data.get('image_data') or not data.get('secret_message'):
+            return jsonify({
+                'success': False,
+                'message': 'image_data dan secret_message harus diisi'
+            }), 400
+        
+        image_base64 = data['image_data']
+        secret_message = data['secret_message']
+        
+        # Clean base64 string
+        if isinstance(image_base64, str):
+            if 'base64,' in image_base64:
+                image_base64 = image_base64.split('base64,')[1]
+            image_base64 = image_base64.strip().replace('\n', '').replace('\r', '')
+        
+        print(f"📝 Encoding message ({len(secret_message)} chars) into image...")
+        
+        # Import steganography
+        from utils.steganography import Steganography
+        stego = Steganography()
+        
+        # Check capacity
+        capacity_info = stego.check_capacity(image_base64)
+        
+        if len(secret_message) > capacity_info['max_characters']:
+            return jsonify({
+                'success': False,
+                'message': f'Pesan terlalu panjang! Maksimal {capacity_info["max_characters"]} karakter, pesan kamu {len(secret_message)} karakter',
+                'image_info': capacity_info
+            }), 400
+        
+        # Encode message
+        encoded_image_base64 = stego.encode_message(image_base64, secret_message)
+        
+        # Calculate capacity usage
+        capacity_used_percent = (len(secret_message) / capacity_info['max_characters']) * 100
+        
+        print(f"✅ Message encoded successfully!")
+        print(f"📊 Capacity used: {capacity_used_percent:.3f}%")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pesan berhasil disembunyikan dalam gambar',
+            'data': {
+                'encoded_image': encoded_image_base64,  # Base64 gambar hasil
+                'image_info': {
+                    'width': capacity_info['width'],
+                    'height': capacity_info['height'],
+                    'total_pixels': capacity_info['total_pixels'],
+                    'max_capacity': capacity_info['max_characters']
+                },
+                'message_length': len(secret_message),
+                'capacity_used_percent': round(capacity_used_percent, 3),
+                'format': 'PNG',
+                'note': 'Download gambar dengan decode base64 ke file PNG'
+            }
+        }), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/stego/decode', methods=['POST'])
+def stego_decode_stateless():
+    """
+    🔓 STATELESS DECODE - Decode message dari gambar tanpa save ke database
+    
+    User upload gambar steganografi → return pesan rahasia
+    
+    Request Body:
+    {
+        "image_data": "base64_encoded_stego_image"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Pesan berhasil diekstrak",
+        "data": {
+            "secret_message": "pesan rahasia",
+            "message_length": 18,
+            "image_info": {
+                "width": 1920,
+                "height": 1080
+            }
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validasi input
+        if not data or not data.get('image_data'):
+            return jsonify({
+                'success': False,
+                'message': 'image_data harus diisi'
+            }), 400
+        
+        image_base64 = data['image_data']
+        
+        # Clean base64 string
+        if isinstance(image_base64, str):
+            if 'base64,' in image_base64:
+                image_base64 = image_base64.split('base64,')[1]
+            image_base64 = image_base64.strip().replace('\n', '').replace('\r', '')
+        
+        print(f"🔓 Decoding message from uploaded image...")
+        
+        # Import steganography
+        from utils.steganography import Steganography
+        stego = Steganography()
+        
+        # Get image info
+        capacity_info = stego.check_capacity(image_base64)
+        
+        # Decode message
+        secret_message = stego.decode_message(image_base64)
+        
+        print(f"✅ Message decoded successfully! Length: {len(secret_message)}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Pesan berhasil diekstrak',
+            'data': {
+                'secret_message': secret_message,
+                'message_length': len(secret_message),
+                'image_info': {
+                    'width': capacity_info['width'],
+                    'height': capacity_info['height'],
+                    'total_pixels': capacity_info['total_pixels'],
+                    'max_capacity': capacity_info['max_characters']
+                }
+            }
+        }), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error decoding message: {str(e)}'
+        }), 500
 
 
 @app.route('/api/users', methods=['GET'])
@@ -260,245 +432,14 @@ def hash_password_endpoint():
         }), 500
 
 
-# ==================== STEGANOGRAPHY ENDPOINTS ====================
-
-@app.route('/api/stego/upload', methods=['POST'])
-def stego_upload():
-    """
-    Upload gambar dengan steganografi (encode message + save to Google Drive)
-    
-    Request Body:
-    {
-        "user_id": 1,
-        "image_data": "base64_encoded_image",
-        "secret_message": "pesan rahasia",
-        "filename": "photo.png"  // optional
-    }
-    """
-    try:
-        data = request.get_json()
-        
-        # Validasi input
-        if not data or not data.get('user_id') or not data.get('image_data') or not data.get('secret_message'):
-            return jsonify({
-                'success': False,
-                'message': 'user_id, image_data, dan secret_message harus diisi'
-            }), 400
-        
-        user_id = data['user_id']
-        image_data = data['image_data']
-        secret_message = data['secret_message']
-        filename = data.get('filename')  # Optional
-        
-        # Process dan save
-        result = image_service.process_and_save_image(
-            user_id=user_id,
-            image_base64=image_data,
-            secret_message=secret_message,
-            original_filename=filename
-        )
-        
-        if result['success']:
-            return jsonify(result), 201
-        else:
-            return jsonify(result), 400
-    
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
-
-
-@app.route('/api/stego/gallery', methods=['GET'])
-def stego_public_gallery():
-    """
-    Get semua gambar steganografi dari semua user (Public Gallery)
-    
-    Query params:
-    - page (optional, default=1): Halaman
-    - limit (optional, default=20): Jumlah per halaman
-    
-    Example: GET /api/stego/gallery?page=1&limit=20
-    
-    Konsep: Semua user bisa lihat gambar, tapi hanya bisa decode jika tau keynya
-    """
-    try:
-        # Get query params
-        page = request.args.get('page', default=1, type=int)
-        limit = request.args.get('limit', default=20, type=int)
-        
-        # Validasi
-        if page < 1:
-            page = 1
-        if limit < 1 or limit > 100:  # Max 100 per page
-            limit = 20
-        
-        result = image_service.get_all_images_public(page=page, limit=limit)
-        
-        if result['success']:
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 400
-    
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
-
-
-@app.route('/api/stego/images/<int:user_id>', methods=['GET'])
-def stego_list_user_images(user_id):
-    """
-    Get semua gambar steganografi milik user
-    
-    Example: GET /api/stego/images/1
-    """
-    try:
-        result = image_service.get_user_images(user_id)
-        
-        if result['success']:
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 400
-    
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
-
-
-@app.route('/api/stego/image/<int:image_id>', methods=['GET'])
-def stego_get_image(image_id):
-    """
-    Get image metadata dengan Drive links
-    
-    Query params: user_id (required)
-    Example: GET /api/stego/image/1?user_id=1
-    """
-    try:
-        user_id = request.args.get('user_id')
-        
-        if not user_id:
-            return jsonify({
-                'success': False,
-                'message': 'user_id query parameter harus diisi'
-            }), 400
-        
-        result = image_service.get_image_data(image_id, int(user_id))
-        
-        if result['success']:
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 404
-    
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
-
-
-@app.route('/api/stego/decode/<int:image_id>', methods=['GET'])
-def stego_decode_message(image_id):
-    """
-    Download gambar dari Drive dan decode pesan rahasianya
-    
-    Query params: user_id (required)
-    Example: GET /api/stego/decode/1?user_id=1
-    """
-    try:
-        user_id = request.args.get('user_id')
-        
-        if not user_id:
-            return jsonify({
-                'success': False,
-                'message': 'user_id query parameter harus diisi'
-            }), 400
-        
-        result = image_service.decode_message(image_id, int(user_id))
-        
-        if result['success']:
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 404
-    
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
-
-
-@app.route('/api/stego/image/<int:image_id>', methods=['DELETE'])
-def stego_delete_image(image_id):
-    """
-    Delete gambar (dari database dan Google Drive)
-    
-    Request Body:
-    {
-        "user_id": 1
-    }
-    """
-    try:
-        data = request.get_json()
-        
-        if not data or not data.get('user_id'):
-            return jsonify({
-                'success': False,
-                'message': 'user_id harus diisi'
-            }), 400
-        
-        user_id = data['user_id']
-        
-        result = image_service.delete_image(image_id, user_id)
-        
-        if result['success']:
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 404
-    
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
-
-
-# ==================== STATIC FILES ENDPOINT ====================
-
-@app.route('/uploads/<filename>')
-def serve_uploaded_file(filename):
-    """
-    Serve uploaded images (untuk akses gambar dari browser/Flutter)
-    
-    Example: GET /uploads/1_20251031_120000_abc123.png
-    """
-    try:
-        # Gunakan upload_folder yang sama dengan ImageStorageService
-        return send_from_directory(image_service.upload_folder, filename)
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'File not found: {str(e)}'
-        }), 404
-
+# ==================== SERVER STARTUP ====================
 
 if __name__ == '__main__':
     print("\n" + "="*50)
     print("🚀 Starting Kripto App API Server")
     print("="*50)
+    print("📌 Mode: Stateless Steganography (No Database Storage)")
     config.display_config()
-    print(f"📁 Upload folder: {image_service.upload_folder}")
-    print(f"📁 Folder exists: {os.path.exists(image_service.upload_folder)}")
     print("="*50 + "\n")
     
     app.run(
