@@ -32,9 +32,14 @@ class SignInUpController extends GetxController {
         // Decode balasan JSON dari server
         final responseData = jsonDecode(response.body);
         print("Respon server: ${responseData['message']}");
-
+        final id = responseData['user']['id'];
+        print("user id: $id");
         // Navigate to home page
-        Get.offAllNamed(AppRoutes.home);
+        Get.offAllNamed(AppRoutes.home, arguments: {
+          "id": id,
+          "email": email,
+          "username": responseData['user']['username'],
+        });
 
         Get.snackbar(
           'Login Berhasil',
@@ -67,6 +72,7 @@ class SignInUpController extends GetxController {
         colorText: Colors.white,
       );
       isLoading.value = false;
+      print("errior : $e");
       return;
     }
     isLoading.value = false;
