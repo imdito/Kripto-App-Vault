@@ -58,15 +58,29 @@ class ProfileView extends GetView<ProfileController> {
             onTap: controller.changeMasterPin,
           ),
 
-          // --- MENU TAMBAH BIOMETRIC (SESUAI REQUEST) ---
-          ListTile(
-            leading: const Icon(Icons.fingerprint),
-            title: const Text('Tambah / Atur Biometrik'),
-            subtitle: const Text('Gunakan sidik jari atau Face ID'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: controller.addBiometric,
-          ),
+          // --- MENU TAMBAH BIOMETRIC ---
+          Obx(() {
+            // Hanya tampilkan jika perangkat mendukung biometrik
+            if (!controller.isBiometricSupported.value) {
+              return const ListTile(
+                leading: Icon(Icons.fingerprint, color: Colors.grey),
+                title: Text('Biometrik Tidak Didukung'),
+                subtitle: Text('Perangkat ini tidak memiliki sensor biometrik.'),
+              );
+            }
 
+            // Jika didukung, tampilkan Switch
+            return SwitchListTile(
+              secondary: const Icon(Icons.fingerprint),
+              title: const Text('Aktifkan Biometrik'),
+              subtitle: const Text('Gunakan sidik jari atau Face ID'),
+              value: controller.isBiometricEnabled.value,
+              onChanged: (bool newValue) {
+                // Panggil controller untuk menangani logika
+                controller.toggleBiometric(newValue);
+              },
+            );
+          }),
           const Divider(height: 30),
 
           // --- MENU LOGOUT ---
