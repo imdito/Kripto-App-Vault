@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from connection import get_db_connection
 from config import config
 from auth import AuthService, hash_password_md5, validate_email
+from message_service import MessageService
 import traceback
 
 app = Flask(__name__)
@@ -17,6 +18,9 @@ db = get_db_connection(**config.get_db_config())
 
 # Inisialisasi Auth Service
 auth_service = AuthService(db)
+
+# Inisialisasi Message Service
+message_service = MessageService(db)
 
 
 @app.route('/')
@@ -37,6 +41,14 @@ def index():
             # Steganography Stateless API (No Database!)
             'stego_encode': '/api/stego/encode',  # NEW! Upload gambar + pesan → return gambar hasil
             'stego_decode': '/api/stego/decode',  # NEW! Upload gambar → return pesan
+            # Messaging API
+            'send_message': '/api/messages/send',  # POST - Kirim pesan
+            'inbox': '/api/messages/inbox',  # GET - Pesan masuk
+            'sent_messages': '/api/messages/sent',  # GET - Pesan terkirim
+            'message_detail': '/api/messages/<id>',  # GET - Detail pesan
+            'delete_message': '/api/messages/<id>',  # DELETE - Hapus pesan
+            'conversation': '/api/messages/conversation/<user_id>',  # GET - Percakapan dengan user
+            'search_messages': '/api/messages/search',  # GET - Cari pesan
             'test': '/tes/<name>'
         }
     })
@@ -446,13 +458,344 @@ def hash_password_endpoint():
         }), 500
 
 
+# ==================== MESSAGING API ====================
+
+@app.route('/api/messages/send', methods=['POST'])
+def send_message():
+    """
+    📨 Kirim pesan ke user lain
+    
+    Request Body:
+    {
+        "sender_id": 1,
+        "receiver_email": "user@example.com",
+        "message_text": "Halo, ini pesan rahasia!"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Pesan berhasil dikirim ke username",
+        "data": {
+            "message_id": 123,
+            "receiver_username": "username",
+            "sent_at": "2025-11-01T10:30:00"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validasi input
+        if not data or not data.get('sender_id') or not data.get('receiver_email') or not data.get('message_text'):
+            return jsonify({
+                'success': False,
+                'message': 'sender_id, receiver_email, dan message_text harus diisi'
+            }), 400
+        
+        sender_id = data['sender_id']
+        receiver_email = data['receiver_email']
+        message_text = data['message_text']
+        
+        # Kirim pesan
+        result = message_service.send_message(sender_id, receiver_email, message_text)
+        
+        if result['success']:
+            return jsonify(result), 201
+        else:
+            return jsonify(result), 400
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/messages/inbox', methods=['GET'])
+def get_inbox():
+    """
+    📬 Ambil pesan masuk (inbox)
+    
+    Query Parameters:
+    - user_id: ID user (required)
+    - limit: Jumlah pesan (default: 50)
+    - offset: Offset untuk pagination (default: 0)
+    
+    Example: /api/messages/inbox?user_id=1&limit=20&offset=0
+    
+    Response:
+    {
+        "success": true,
+        "data": {
+            "messages": [...],
+            "total": 100,
+            "limit": 20,
+            "offset": 0
+        }
+    }
+    """
+    try:
+        user_id = request.args.get('user_id')
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'user_id harus diisi'
+            }), 400
+        
+        result = message_service.get_inbox(int(user_id), limit, offset)
+        return jsonify(result), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/messages/sent', methods=['GET'])
+def get_sent_messages():
+    """
+    📤 Ambil pesan terkirim (sent messages)
+    
+    Query Parameters:
+    - user_id: ID user (required)
+    - limit: Jumlah pesan (default: 50)
+    - offset: Offset untuk pagination (default: 0)
+    
+    Example: /api/messages/sent?user_id=1&limit=20&offset=0
+    
+    Response:
+    {
+        "success": true,
+        "data": {
+            "messages": [...],
+            "total": 50,
+            "limit": 20,
+            "offset": 0
+        }
+    }
+    """
+    try:
+        user_id = request.args.get('user_id')
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'user_id harus diisi'
+            }), 400
+        
+        result = message_service.get_sent_messages(int(user_id), limit, offset)
+        return jsonify(result), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/messages/<int:message_id>', methods=['GET'])
+def get_message_detail(message_id):
+    """
+    📄 Ambil detail pesan
+    
+    Query Parameters:
+    - user_id: ID user yang mengakses (required)
+    
+    Example: /api/messages/123?user_id=1
+    
+    Response:
+    {
+        "success": true,
+        "data": {
+            "id": 123,
+            "sender_id": 1,
+            "sender_username": "john",
+            "receiver_id": 2,
+            "receiver_username": "jane",
+            "message_text": "Hello!",
+            "created_at": "2025-11-01T10:30:00"
+        }
+    }
+    """
+    try:
+        user_id = request.args.get('user_id')
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'user_id harus diisi'
+            }), 400
+        
+        result = message_service.get_message_detail(message_id, int(user_id))
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 404
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/messages/<int:message_id>', methods=['DELETE'])
+def delete_message(message_id):
+    """
+    🗑️ Hapus pesan
+    
+    Request Body:
+    {
+        "user_id": 1
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Pesan berhasil dihapus"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or not data.get('user_id'):
+            return jsonify({
+                'success': False,
+                'message': 'user_id harus diisi'
+            }), 400
+        
+        user_id = data['user_id']
+        result = message_service.delete_message(message_id, user_id)
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 404
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/messages/conversation/<int:other_user_id>', methods=['GET'])
+def get_conversation(other_user_id):
+    """
+    💬 Ambil percakapan dengan user tertentu
+    
+    Query Parameters:
+    - user_id: ID user yang mengakses (required)
+    - limit: Jumlah pesan (default: 50)
+    
+    Example: /api/messages/conversation/2?user_id=1&limit=50
+    
+    Response:
+    {
+        "success": true,
+        "data": {
+            "other_user": {
+                "id": 2,
+                "username": "jane",
+                "email": "jane@example.com"
+            },
+            "messages": [...],
+            "total": 25
+        }
+    }
+    """
+    try:
+        user_id = request.args.get('user_id')
+        limit = request.args.get('limit', 50, type=int)
+        
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'user_id harus diisi'
+            }), 400
+        
+        result = message_service.get_conversation(int(user_id), other_user_id, limit)
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 404
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@app.route('/api/messages/search', methods=['GET'])
+def search_messages():
+    """
+    🔍 Cari pesan berdasarkan keyword
+    
+    Query Parameters:
+    - user_id: ID user (required)
+    - keyword: Kata kunci pencarian (required)
+    - limit: Jumlah hasil (default: 50)
+    
+    Example: /api/messages/search?user_id=1&keyword=meeting&limit=20
+    
+    Response:
+    {
+        "success": true,
+        "data": {
+            "keyword": "meeting",
+            "results": [...],
+            "total": 5
+        }
+    }
+    """
+    try:
+        user_id = request.args.get('user_id')
+        keyword = request.args.get('keyword')
+        limit = request.args.get('limit', 50, type=int)
+        
+        if not user_id or not keyword:
+            return jsonify({
+                'success': False,
+                'message': 'user_id dan keyword harus diisi'
+            }), 400
+        
+        result = message_service.search_messages(int(user_id), keyword, limit)
+        return jsonify(result), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
 # ==================== SERVER STARTUP ====================
 
 if __name__ == '__main__':
     print("\n" + "="*50)
     print("🚀 Starting Kripto App API Server")
     print("="*50)
-    print("📌 Mode: Stateless Steganography (No Database Storage)")
+    print("📌 Features:")
+    print("   - User Authentication (MD5)")
+    print("   - Stateless Steganography (LSB)")
+    print("   - Messaging System (Email-like)")
     config.display_config()
     print("="*50 + "\n")
     
