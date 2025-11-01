@@ -224,10 +224,24 @@ def stego_decode_stateless():
         }), 200
     
     except Exception as e:
+        error_message = str(e)
         traceback.print_exc()
+        
+        # Check jika error karena delimiter tidak ketemu (gambar bukan stego)
+        if "Delimiter tidak ditemukan" in error_message:
+            return jsonify({
+                'success': False,
+                'error_type': 'NO_MESSAGE_FOUND',
+                'message': 'Gambar ini tidak mengandung pesan steganografi',
+                'details': 'Delimiter tidak ditemukan. Pastikan gambar yang diupload sudah di-encode dengan aplikasi ini.',
+                'suggestion': 'Gunakan gambar yang sudah di-encode dengan endpoint /api/stego/encode'
+            }), 400
+        
+        # Error lainnya
         return jsonify({
             'success': False,
-            'message': f'Error decoding message: {str(e)}'
+            'error_type': 'DECODE_ERROR',
+            'message': f'Error saat decoding: {error_message}'
         }), 500
 
 

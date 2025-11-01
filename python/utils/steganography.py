@@ -131,22 +131,37 @@ class Steganography:
             
             # Convert binary ke text
             message = ""
+            char_count = 0
+            max_chars = 10000  # Limit untuk mencegah infinite loop
+            
             for i in range(0, len(binary_message), 8):
                 byte = binary_message[i:i+8]
                 if len(byte) == 8:
-                    char = chr(int(byte, 2))
-                    message += char
-                    
-                    # Cek apakah sudah mencapai delimiter
-                    if message.endswith(self.delimiter):
-                        # Hapus delimiter dari pesan
-                        message = message[:-len(self.delimiter)]
-                        return message
+                    try:
+                        char = chr(int(byte, 2))
+                        message += char
+                        char_count += 1
+                        
+                        # Cek apakah sudah mencapai delimiter
+                        if message.endswith(self.delimiter):
+                            # Hapus delimiter dari pesan
+                            message = message[:-len(self.delimiter)]
+                            return message
+                        
+                        # Safety limit
+                        if char_count > max_chars:
+                            break
+                    except ValueError:
+                        # Invalid character, skip
+                        continue
             
-            # Jika tidak menemukan delimiter, return pesan yang ada
-            return message
+            # Jika sampai sini berarti tidak ketemu delimiter
+            # Kemungkinan gambar tidak ada pesan steganografi
+            raise Exception("Delimiter tidak ditemukan. Gambar ini mungkin tidak mengandung pesan steganografi atau pesan telah rusak.")
             
         except Exception as e:
+            if "Delimiter tidak ditemukan" in str(e):
+                raise e
             raise Exception(f"Error decoding message: {str(e)}")
     
     def _modify_lsb(self, value, bit):
