@@ -7,12 +7,15 @@ import 'package:kripto_app/profilePage/editProfile/edit_profile_controller.dart'
 import 'package:kripto_app/profilePage/editProfile/edit_profile_view.dart';
 import 'package:kripto_app/profilePage/profile_controller.dart';
 import 'package:kripto_app/profilePage/profile_view.dart';
+import 'package:kripto_app/steganoPage/stegano_controller.dart';
+import 'package:kripto_app/steganoPage/stegano_view.dart';
 
 class AppRoutes {
   static const String login = '/login';
   static const String home = '/home';
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
+  static const String steganography = '/steganography';
 }
 
 class AppPages {
@@ -51,7 +54,15 @@ class AppPages {
       ),
       transition: Transition.rightToLeft, // Transisi
     ),
-
+    GetPage(
+      name: AppRoutes.steganography,
+      page: () => SteganographyView(),
+      binding: BindingsBuilder(
+        () {
+          Get.lazyPut<SteganographyController>(() => SteganographyController());
+        },
+      ),
+    )
   ];
 }
 
