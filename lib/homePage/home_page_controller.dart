@@ -105,7 +105,7 @@ class HomePageController extends GetxController {
               title: const Text('Sembunyikan Pesan di Gambar'),
               onTap: () {
                 Get.back();
-                // Get.toNamed('/add-steganography');
+                Get.toNamed('/steganography');
               },
             ),
           ],
