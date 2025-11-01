@@ -1,5 +1,7 @@
 import 'dart:convert';
-
+import 'package:flutter/services.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
@@ -8,6 +10,42 @@ import '../routes.dart';
 
 class SignInUpController extends GetxController {
   var isLoading = false.obs;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  final GetStorage _box = GetStorage();
+  var isBiometricAvailable = false.obs; // Status apakah tombol bio ditampilkan
+
+  // 1. Cek dari GetStorage apakah biometrik pernah diaktifkan
+  Future<void> checkBiometricStatus() async {
+    final bool biometricEnabled = _box.read('biometric_enabled') ?? false;
+    bool hardwareSupported = false;
+
+    try {
+      hardwareSupported = await _localAuth.canCheckBiometrics;
+    } catch (e) {
+      hardwareSupported = false;
+    }
+
+    // Hanya tampilkan tombol jika diaktifkan DI APP & didukung DI PERANGKAT
+    isBiometricAvailable.value = biometricEnabled && hardwareSupported;
+  }
+
+  // 2. Fungsi yang dipanggil saat tombol biometrik ditekan
+  Future<bool> loginWithBiometrics() async {
+    bool authenticated = await _authenticate("Login ke SecureVault");
+
+    if (authenticated) {
+      // Jika sukses, langsung bypass login dan masuk ke home
+      return true;
+    } else {
+      Get.snackbar(
+        "Gagal",
+        "Otentikasi biometrik gagal. Silakan coba lagi.",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return false;
+    }
+  }
+
 
   Future<void> signIn(String email, String password) async {
     isLoading.value = true;
@@ -35,6 +73,15 @@ class SignInUpController extends GetxController {
         final id = responseData['user']['id'];
         print("user id: $id");
         // Navigate to home page
+        await checkBiometricStatus(); // Cek status biometrik sebelum masuk
+        if(isBiometricAvailable.value){
+          // Jika biometrik diaktifkan, minta otentikasi
+          bool bioLoginSuccess = await loginWithBiometrics();
+          if(!bioLoginSuccess){
+            isLoading.value = false;
+            return; // Batalkan login jika otentikasi gagal
+          }
+        }
         Get.offAllNamed(AppRoutes.home, arguments: {
           "id": id,
           "email": email,
@@ -151,4 +198,26 @@ class SignInUpController extends GetxController {
     }
     isLoading.value = false;
   }
+
+  Future<bool> _authenticate(String reason) async {
+    try {
+      return await _localAuth.authenticate(
+        localizedReason: reason,
+          biometricOnly: true,
+      );
+    } on PlatformException catch (e) {
+      String message = "Terjadi kesalahan tidak diketahui.";
+      if (e.code == 'NotEnrolled') {
+        message = "Anda belum mendaftarkan biometrik di perangkat ini.";
+      }
+      Get.snackbar(
+        "Otentikasi Gagal",
+        message,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return false;
+    }
+  }
+
 }

@@ -85,7 +85,7 @@ class EditProfileController extends GetxController {
             'Content-Type': 'application/json; charset=UTF-8',
           },
           body: jsonEncode( {
-            'user_id': id,
+            'id': id,
             'new_password': password,
             'old_password': old_password,
           }));
