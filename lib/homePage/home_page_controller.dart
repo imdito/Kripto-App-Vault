@@ -120,6 +120,14 @@ class HomePageController extends GetxController {
                 Get.toNamed('/steganography');
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.send_rounded),
+              title: const Text('Kirim Pesan Aman'),
+              onTap: () {
+                Get.back();
+                Get.toNamed('/send-page', arguments: id);
+              },
+            ),
           ],
         ),
       ),

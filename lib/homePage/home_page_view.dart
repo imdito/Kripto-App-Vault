@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kripto_app/homePage/home_page_controller.dart';
-
-import '../LoginRegister/signin_up_controller.dart';
 import 'detail_massage_view.dart';
-// import 'home_page_model.dart'; // <<< Model Vault (mungkin tidak perlu lagi)
 
-
-// Tetap pakai GetView<HomePageController> (SESUAI PERMINTAAN)
 class HomePageView extends GetView<HomePageController> {
 
   String username = Get.arguments["username"] ?? "User";
   String email = Get.arguments["email"] ?? "email@email.com";
   int id = Get.arguments["id"] ?? 0;
 
-
   HomePageView({Key? key}) : super(key: key);
-
-  // Helper format tanggal (dari model inbox kita)
   String _formatDate(DateTime date) {
     return "${date.day}/${date.month} ${date.hour}:${date.minute.toString().padLeft(2, '0')}";
   }
@@ -41,27 +33,18 @@ class HomePageView extends GetView<HomePageController> {
         ],
       ),
 
-      // --- DRAWER (MENU SAMPING) ---
-      // Widget _buildDrawer() Anda TIDAK SAYA UBAH SAMA SEKALI
       drawer: _buildDrawer(),
-
-      // --- TOMBOL AKSI UTAMA (FAB) ---
-      // Diganti jadi tombol BUAT PESAN BARU (untuk Inbox)
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Panggil method dari controller
           controller.showAddItemSheet();
         },
         child: const Icon(Icons.edit), // Icon pensil (tulis)
       ),
 
-      // --- BODY UTAMA ---
       body: Obx(() {
-        // 1. Jika masih loading
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
-        // 2. Jika ada error
         if (controller.errorMessage.isNotEmpty) {
           return Center(
             child: Padding(
@@ -88,8 +71,6 @@ class HomePageView extends GetView<HomePageController> {
           );
         }
 
-        // 3. Jika data kosong
-        // PERHATIKAN: Saya ganti 'vaultItems' jadi 'messages'
         if (controller.messages.isEmpty) {
           print("Jumlah Pesan : ${controller.messages.length}");
           print ("id : $id");
@@ -98,7 +79,6 @@ class HomePageView extends GetView<HomePageController> {
           );
         }
 
-        // 4. Jika ada data, tampilkan list pesan
         return ListView.builder(
           padding: const EdgeInsets.all(8.0),
           // PERHATIKAN: Saya ganti 'vaultItems' jadi 'messages'
@@ -151,9 +131,6 @@ class HomePageView extends GetView<HomePageController> {
     );
   }
 
-  // --- WIDGET HELPER ---
-
-  // DRAWER INI TIDAK SAYA UBAH SAMA SEKALI (SESUAI PERMINTAAN)
   Widget _buildDrawer() {
     return Drawer(
       child: ListView(
@@ -163,11 +140,8 @@ class HomePageView extends GetView<HomePageController> {
             accountName: Text(username), // Ganti dengan data user
             accountEmail: Text(email), // Ganti
             currentAccountPicture: const CircleAvatar(
-              // Ambil huruf pertama dari username
               child: Text(
-                // Tambahan kecil agar lebih dinamis
                   (true) ? "U" : "X"
-                // username.isNotEmpty ? username[0].toUpperCase() : "U"
               ),
             ),
           ),
@@ -175,7 +149,6 @@ class HomePageView extends GetView<HomePageController> {
             leading: const Icon(Icons.person_outline),
             title: const Text('Pengaturan Profil'),
             onTap: (){
-              // NAVIGASI INI TIDAK SAYA UBAH (SESUAI PERMINTAAN)
               Get.toNamed('/profile', arguments:
               {
                 "id": id,
@@ -195,8 +168,6 @@ class HomePageView extends GetView<HomePageController> {
             leading: Icon(Icons.logout, color: Colors.red.shade700),
             title: const Text('Logout'),
             onTap: () {
-              // Panggil method logout dari controller (SESUAI PERMINTAAN)
-              // Pastikan method 'logout()' ada di HomePageController
               controller.logout();
             },
           ),
@@ -204,8 +175,4 @@ class HomePageView extends GetView<HomePageController> {
       ),
     );
   }
-
-// --- WIDGET BAWAAN ANDA YANG SUDAH TIDAK DIPAKAI ---
-// (Saya hapus _buildEmptyState, _buildVaultList, _getIconForItem, dll
-// karena sudah diganti dengan UI Inbox)
 }

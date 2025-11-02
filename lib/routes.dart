@@ -10,6 +10,8 @@ import 'package:kripto_app/profilePage/editProfile/edit_profile_controller.dart'
 import 'package:kripto_app/profilePage/editProfile/edit_profile_view.dart';
 import 'package:kripto_app/profilePage/profile_controller.dart';
 import 'package:kripto_app/profilePage/profile_view.dart';
+import 'package:kripto_app/sendMessage/send_message_controller.dart';
+import 'package:kripto_app/sendMessage/send_message_view.dart';
 import 'package:kripto_app/steganoPage/stegano_controller.dart';
 import 'package:kripto_app/steganoPage/stegano_view.dart';
 import 'package:kripto_app/superEncrypt/super_encrypt_controller.dart';
@@ -24,6 +26,7 @@ class AppRoutes {
   static const String detailMassage = '/detail-massage';
   static const String superEncrypt = '/super-encrypt';
   static const String fileEncrypt = '/file-encrypt';
+  static const String sendPage = '/send-page';
 
 }
 
@@ -91,6 +94,13 @@ class AppPages {
         },
       ),
     ),
+    GetPage(name: AppRoutes.sendPage,
+        page: ()=>SendMessageView(),
+        binding: BindingsBuilder(
+              (){
+            Get.lazyPut<SendMessageController>(()=>SendMessageController());
+      }
+    ))
   ];
 }
 
