@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:kripto_app/LoginRegister/login_register_view.dart';
 import 'package:kripto_app/LoginRegister/signin_up_controller.dart';
+import 'package:kripto_app/homePage/detail_massage_view.dart';
 import 'package:kripto_app/homePage/home_page_view.dart';
 import 'package:kripto_app/homePage/home_page_controller.dart';
 import 'package:kripto_app/profilePage/editProfile/edit_profile_controller.dart';
@@ -9,6 +10,8 @@ import 'package:kripto_app/profilePage/profile_controller.dart';
 import 'package:kripto_app/profilePage/profile_view.dart';
 import 'package:kripto_app/steganoPage/stegano_controller.dart';
 import 'package:kripto_app/steganoPage/stegano_view.dart';
+import 'package:kripto_app/superEncrypt/super_encrypt_controller.dart';
+import 'package:kripto_app/superEncrypt/super_encrypt_view.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -16,6 +19,9 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String steganography = '/steganography';
+  static const String detailMassage = '/detail-massage';
+  static const String superEncrypt = '/super-encrypt';
+
 }
 
 class AppPages {
@@ -62,7 +68,17 @@ class AppPages {
           Get.lazyPut<SteganographyController>(() => SteganographyController());
         },
       ),
-    )
+    ),
+    GetPage(name: AppRoutes.detailMassage, page: ()=>DetailMassageView()),
+    GetPage(
+      name: AppRoutes.superEncrypt, // (Buat rute baru '/crypto')
+      page: () => const SuperEncryptView(),
+      binding: BindingsBuilder(
+        () {
+        Get.lazyPut<SuperEncryptController>(() => SuperEncryptController());
+        },
+      ),
+    ),
   ];
 }
 

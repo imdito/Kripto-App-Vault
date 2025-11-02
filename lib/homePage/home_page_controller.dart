@@ -1,74 +1,86 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../superEncrypt/super_encrypt_view.dart';
 import 'home_page_model.dart';
 
 class HomePageController extends GetxController {
 
   // --- STATE ---
-  // Gunakan .obs untuk membuat variabel menjadi reaktif (Rx)
   var isLoading = true.obs;
-  var vaultItems = <VaultItem>[].obs; // List reaktif untuk item brankas
+  var errorMessage = ''.obs;
+  var messages = <Message>[].obs;
 
-  // --- LIFECYCLE ---
+  // <<< FIX 2: 'id' akan kita isi di onInit >>>
+  int id = 0;
+
   @override
   void onInit() {
     super.onInit();
-    fetchVaultItems(); // Panggil data saat controller dimuat
+
+    // <<< FIX 2 (Lanjutan): Ambil 'id' dari argumen saat controller dibuat >>>
+    if (Get.arguments != null && Get.arguments is Map) {
+      id = Get.arguments["id"] ?? 0;
+    } else {
+      print("PERINGATAN: Controller tidak menerima argumen 'id'.");
+    }
+
+    // Panggil fetchMessages dengan 'id' yang sudah di-update
+    fetchMessages(id);
   }
 
-  // --- LOGIC ---
+  // 1. FUNGSI UNTUK MENGAMBIL DATA PESAN
+  Future<void> fetchMessages(int id) async {
+    String? host = dotenv.env['API_HOST'];
+    print('ID yang dipakai controller untuk fetch: $id');
 
-  // Simulasi pengambilan data dari database/Google Drive
-  Future<void> fetchVaultItems() async {
+    if (id == 0) {
+      errorMessage('ID User tidak valid (0). Gagal mengambil data.');
+      isLoading(false);
+      return;
+    }
+
+    final Uri url = Uri.parse('$host/api/messages/inbox?user_id=$id&limit=5&offset=0');
+
     try {
       isLoading(true);
-      // Simulasi delay jaringan
-      await Future.delayed(const Duration(seconds: 1));
+      errorMessage('');
 
-      // DATA DUMMY (ganti dengan logika fetch Anda)
-      var dummyData = [
-        VaultItem(
-            id: '1',
-            title: "Daftar Password Bank",
-            type: VaultItemType.note,
-            lastModified: DateTime.now().subtract(const Duration(days: 1))),
-        VaultItem(
-            id: '2',
-            title: "Scan KTP & KK.zip",
-            type: VaultItemType.file,
-            lastModified: DateTime.now().subtract(const Duration(days: 2))),
-        VaultItem(
-            id: '3',
-            title: "Foto Liburan (Rahasia)",
-            type: VaultItemType.steganography,
-            lastModified: DateTime.now().subtract(const Duration(days: 3))),
-      ];
+      final response = await http.get(url);
 
-      // Untuk tes state kosong, uncomment baris ini:
-      // var dummyData = <VaultItem>[];
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
 
-      // Masukkan data ke list reaktif
-      vaultItems.assignAll(dummyData);
+        if (body['success'] == true && body['data'] != null) {
+          final List<dynamic> messagesJson = body['data']['messages'];
+          messages.value = messagesJson
+              .map((jsonItem) => Message.fromJson(jsonItem)) // <-- INI WAJIB
+              .toList();
+          // =======================================================
 
+        } else {
+          throw Exception('Format data dari server salah.');
+        }
+      } else {
+        throw Exception('Gagal terhubung. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      errorMessage(e.toString());
     } finally {
       isLoading(false);
     }
   }
 
-  // Aksi saat item di-tap
-  void openItem(VaultItem item) {
-    print("Membuka item: ${item.title}");
-    // Tampilkan dialog otentikasi (sidik jari/PIN)
-    // Get.toNamed('/detail-item', arguments: item.id);
-    Get.snackbar(
-      "Otentikasi Diperlukan",
-      "Buka item '${item.title}' setelah verifikasi biometrik.",
-      snackPosition: SnackPosition.BOTTOM,
-    );
+  // Fungsi refresh akan otomatis pakai 'id' yang sudah disimpan
+  void refreshMessages() {
+    fetchMessages(id);
   }
 
-  // Aksi untuk tombol FAB (+)
+  // Fungsi FAB dari Anda (tidak diubah)
   void showAddItemSheet() {
     Get.bottomSheet(
       Container(
@@ -88,8 +100,8 @@ class HomePageController extends GetxController {
               leading: const Icon(Icons.note_add_outlined),
               title: const Text('Buat Catatan Aman'),
               onTap: () {
-                Get.back(); // Tutup bottom sheet
-                // Get.toNamed('/add-note'); // Navigasi ke halaman tambah catatan
+                Get.back();
+                Get.toNamed('/super-encrypt');
               },
             ),
             ListTile(
@@ -97,7 +109,6 @@ class HomePageController extends GetxController {
               title: const Text('Upload File Aman'),
               onTap: () {
                 Get.back();
-                // Get.toNamed('/add-file');
               },
             ),
             ListTile(
@@ -114,17 +125,16 @@ class HomePageController extends GetxController {
     );
   }
 
-  // Aksi untuk tombol logout di drawer
+  // Fungsi Logout (tidak diubah)
   void logout() {
     Get.defaultDialog(
       title: "Logout",
-      middleText: "Apakah Anda yakin ingin keluar dari SecureVault?",
+      middleText: "Apakah Anda yakin ingin keluar?",
       textConfirm: "Ya, Keluar",
       textCancel: "Batal",
       confirmTextColor: Colors.white,
       onConfirm: () {
-        // Lakukan proses clear session/token
-        Get.offAllNamed('/login'); // Navigasi ke login & hapus riwayat
+        Get.offAllNamed('/login');
       },
     );
   }
