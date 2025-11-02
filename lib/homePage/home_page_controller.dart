@@ -60,8 +60,6 @@ class HomePageController extends GetxController {
           messages.value = messagesJson
               .map((jsonItem) => Message.fromJson(jsonItem)) // <-- INI WAJIB
               .toList();
-          // =======================================================
-
         } else {
           throw Exception('Format data dari server salah.');
         }

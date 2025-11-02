@@ -118,6 +118,7 @@ class HomePageView extends GetView<HomePageController> {
                         () => DetailMassageView(),
                     arguments: {
                       'senderUsername': message.senderUsername,
+                      'senderEmail': message.senderEmail,
                       'messageText': message.messageText,
                       'createdAt': message.createdAt,
                     },
