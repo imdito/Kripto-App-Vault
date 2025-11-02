@@ -1,6 +1,8 @@
 import 'package:get/get.dart';
 import 'package:kripto_app/LoginRegister/login_register_view.dart';
 import 'package:kripto_app/LoginRegister/signin_up_controller.dart';
+import 'package:kripto_app/fileEncryptPage/file_encrypt_controller.dart';
+import 'package:kripto_app/fileEncryptPage/file_encrypt_view.dart';
 import 'package:kripto_app/homePage/detail_massage_view.dart';
 import 'package:kripto_app/homePage/home_page_view.dart';
 import 'package:kripto_app/homePage/home_page_controller.dart';
@@ -21,6 +23,7 @@ class AppRoutes {
   static const String steganography = '/steganography';
   static const String detailMassage = '/detail-massage';
   static const String superEncrypt = '/super-encrypt';
+  static const String fileEncrypt = '/file-encrypt';
 
 }
 
@@ -76,6 +79,15 @@ class AppPages {
       binding: BindingsBuilder(
         () {
         Get.lazyPut<SuperEncryptController>(() => SuperEncryptController());
+        },
+      ),
+    ),
+    GetPage(
+      name: AppRoutes.fileEncrypt, // (Buat rute baru '/crypto')
+      page: () => const FileEncryptView(),
+      binding: BindingsBuilder(
+            () {
+          Get.lazyPut<FileEncryptController>(() => FileEncryptController());
         },
       ),
     ),

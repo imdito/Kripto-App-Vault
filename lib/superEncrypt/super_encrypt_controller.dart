@@ -1,137 +1,121 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Untuk Clipboard
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
+import 'package:kripto_app/superEncrypt/super_encrypt_service.dart';
 
 class SuperEncryptController extends GetxController {
 
-  final String? baseUrl = dotenv.env['API_HOST']; // Sesuaikan jika perlu
+  // --- KONTROLER INPUT ---
+  late TextEditingController textController;
+  late TextEditingController caesarController;
+  late TextEditingController vigenereController;
+  late TextEditingController desController;
 
-  // --- STATE KONTROLER ---
-  final textInputController = TextEditingController();
-  final keyController = TextEditingController();
+  // --- DEPENDENSI ---
+  // Asumsi Anda sudah memiliki class service ini
+  final _service = SuperEncryptService();
 
-  // --- STATE REAKTIF (.obs) ---
+  // --- STATE REAKTIF ---
   var isLoading = false.obs;
-  var resultText = "".obs; // Untuk menampung hasil enkripsi/dekripsi
+  var result = "".obs; // Menggantikan _result
+  var encryptedData = Rxn<Map<String, dynamic>>(); // Menggantikan _encryptedData
+
+  // --- LIFECYCLE ---
+  @override
+  void onInit() {
+    super.onInit();
+    // Inisialisasi controller dengan nilai default dari kode asli
+    textController = TextEditingController();
+    caesarController = TextEditingController(text: '3');
+    vigenereController = TextEditingController(text: 'KEY');
+    desController = TextEditingController(text: 'secret12');
+  }
 
   @override
   void onClose() {
-    textInputController.dispose();
-    keyController.dispose();
+    // Selalu dispose controller
+    textController.dispose();
+    caesarController.dispose();
+    vigenereController.dispose();
+    desController.dispose();
     super.onClose();
   }
 
-  // ========== ENCRYPT ==========
-  Future<void> encryptText() async {
-    final String inputText = textInputController.text;
-    final String key = keyController.text;
+  // --- LOGIKA AKSI ---
 
-    if (inputText.isEmpty || key.isEmpty) {
-      _showError("Teks input dan Kunci Rahasia tidak boleh kosong.");
+  Future<void> encrypt() async {
+    try {
+      isLoading(true); // Mulai loading
+
+      final data = await _service.encrypt(
+        text: textController.text,
+        caesarShift: int.parse(caesarController.text),
+        vigenereKey: vigenereController.text,
+        desKey: desController.text,
+      );
+
+      encryptedData.value = data; // Simpan data terenkripsi
+      result.value = '✅ Encrypted!\nCiphertext: ${data['ciphertext']}';
+
+    } catch (e) {
+      result.value = '❌ Error: $e';
+    } finally {
+      isLoading(false); // Selesai loading
+    }
+  }
+
+  Future<void> decrypt() async {
+    if (encryptedData.value == null) {
+      result.value = '❌ No encrypted data!';
       return;
     }
 
-    isLoading(true);
-    resultText.value = ""; // Kosongkan hasil sebelumnya
-
     try {
-      print('🔒 Encrypting text...');
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/crypto/encrypt'), // Ganti dengan endpoint Anda
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'text': inputText,
-          'key': key, // Asumsi API butuh kunci
-        }),
-      );
+      isLoading(true); // Mulai loading
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        resultText.value = data['data']['ciphertext']; // Sesuaikan JSON response
-        _showSuccess("Teks berhasil dienkripsi!");
-      } else {
-        final error = jsonDecode(response.body);
-        _showError(error['message']);
-      }
+      final plaintext = await _service.decrypt(encryptedData.value!);
+      result.value = '✅ Decrypted: $plaintext';
+
     } catch (e) {
-      _showError("Error koneksi: $e");
+      result.value = '❌ Error: $e';
     } finally {
-      isLoading(false);
+      isLoading(false); // Selesai loading
     }
   }
 
-  // ========== DECRYPT ==========
-  Future<void> decryptText() async {
-    final String inputText = textInputController.text; // Ini berisi chiperteks
-    final String key = keyController.text;
+  void copyResultToClipboard() {
+    String? textToCopy;
+    String snackbarMessage = "";
 
-    if (inputText.isEmpty || key.isEmpty) {
-      _showError("Teks input dan Kunci Rahasia tidak boleh kosong.");
-      return;
+    // Cek apakah hasil terakhir adalah enkripsi
+    if (encryptedData.value != null && result.value.startsWith('✅ Encrypted!')) {
+      textToCopy = encryptedData.value!['ciphertext'];
+      snackbarMessage = "Ciphertext disalin ke clipboard!";
+    }
+    // Cek apakah hasil terakhir adalah dekripsi
+    else if (result.value.startsWith('✅ Decrypted:')) {
+      // Ambil teks setelah '✅ Decrypted: '
+      textToCopy = result.value.replaceFirst('✅ Decrypted: ', '');
+      snackbarMessage = "Plainteks disalin ke clipboard!";
     }
 
-    isLoading(true);
-    resultText.value = "";
-
-    try {
-      print('🔓 Decrypting text...');
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/crypto/decrypt'), // Ganti dengan endpoint Anda
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'ciphertext': inputText,
-          'key': key,
-        }),
+    // Lakukan aksi copy jika ada teks
+    if (textToCopy != null) {
+      Clipboard.setData(ClipboardData(text: textToCopy));
+      Get.snackbar(
+        "Berhasil Disalin",
+        snackbarMessage,
+        snackPosition: SnackPosition.BOTTOM,
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        resultText.value = data['data']['plaintext']; // Sesuaikan JSON response
-        _showSuccess("Teks berhasil didekripsi!");
-      } else {
-        final error = jsonDecode(response.body);
-        _showError(error['message']);
-      }
-    } catch (e) {
-      _showError("Error koneksi: $e");
-    } finally {
-      isLoading(false);
+    } else if (result.value.isNotEmpty) {
+      // Salin apapun yang ada di box jika tidak terdeteksi
+      Clipboard.setData(ClipboardData(text: result.value));
+      Get.snackbar(
+        "Disalin",
+        "Hasil disalin ke clipboard!",
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
-  }
-
-  // --- UI FEEDBACK & HELPERS ---
-
-  void clearFields() {
-    textInputController.clear();
-    keyController.clear();
-    resultText.value = "";
-  }
-
-  void copyToClipboard() {
-    if (resultText.value.isNotEmpty) {
-      Clipboard.setData(ClipboardData(text: resultText.value));
-      _showSuccess("Teks hasil disalin ke clipboard!");
-    }
-  }
-
-  void _showError(String msg) {
-    Get.snackbar(
-      'Error', msg,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-    );
-  }
-
-  void _showSuccess(String msg) {
-    Get.snackbar(
-      'Sukses', msg,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-    );
   }
 }
+

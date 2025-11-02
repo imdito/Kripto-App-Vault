@@ -109,6 +109,7 @@ class HomePageController extends GetxController {
               title: const Text('Upload File Aman'),
               onTap: () {
                 Get.back();
+                Get.toNamed('/file-encrypt');
               },
             ),
             ListTile(

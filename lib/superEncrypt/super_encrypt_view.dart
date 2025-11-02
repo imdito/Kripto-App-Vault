@@ -2,154 +2,102 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kripto_app/superEncrypt/super_encrypt_controller.dart';
 
+// Ganti dari StatefulWidget menjadi GetView
 class SuperEncryptView extends GetView<SuperEncryptController> {
   const SuperEncryptView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Enkripsi Teks Catatan 📝'),
-        actions: [
-          // Tombol untuk membersihkan layar
-          IconButton(
-            icon: Icon(Icons.clear_all),
-            tooltip: "Bersihkan",
-            onPressed: controller.clearFields,
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text('Super Encrypt (GetX)')),
+      // Tambahkan SingleChildScrollView agar tidak overflow
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // --- INPUT TEKS ---
             TextField(
-              controller: controller.textInputController,
-              decoration: const InputDecoration(
-                labelText: 'Teks Input (Plainteks / Chiperteks)',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 8,
+              controller: controller.textController, // Gunakan controller
+              decoration: InputDecoration(labelText: 'Text'),
             ),
-            const SizedBox(height: 16),
-
-            // --- INPUT KUNCI ---
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller.caesarController, // Gunakan controller
+                    decoration: InputDecoration(labelText: 'Caesar Shift'),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: controller.vigenereController, // Gunakan controller
+                    decoration: InputDecoration(labelText: 'Vigenere Key'),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
             TextField(
-              controller: controller.keyController,
-              obscureText: true, // Sembunyikan kunci
-              decoration: const InputDecoration(
-                labelText: 'Kunci Rahasia',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.key_outlined),
-              ),
+              controller: controller.desController, // Gunakan controller
+              decoration: InputDecoration(labelText: 'DES Key (8 chars)'),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 16),
 
-            // --- TOMBOL AKSI (Enkripsi & Dekripsi) ---
+            // Bungkus tombol dengan Obx untuk memantau isLoading
             Obx(() => Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.lock_outline),
-                    label: const Text('Enkripsi'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.blue, // Warna biru
-                    ),
-                    // Disable tombol saat loading
-                    onPressed: controller.isLoading.value
-                        ? null
-                        : controller.encryptText,
+                  child: ElevatedButton(
+                    // Nonaktifkan tombol saat loading
+                    onPressed: controller.isLoading.value ? null : controller.encrypt,
+                    child: Text('Encrypt'),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.lock_open_outlined),
-                    label: const Text('Dekripsi'),
+                  child: ElevatedButton(
+                    // Nonaktifkan tombol saat loading
+                    onPressed: controller.isLoading.value ? null : controller.decrypt,
+                    child: Text('Decrypt'),
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Colors.green, // Warna hijau
+                      backgroundColor: Colors.green,
                     ),
-                    onPressed: controller.isLoading.value
-                        ? null
-                        : controller.decryptText,
                   ),
                 ),
               ],
             )),
 
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
-            // --- AREA HASIL ---
-            _buildResultArea(),
+            GestureDetector(
+              onLongPress: ()=> controller.copyResultToClipboard(),
+              child: Obx(() => Card(
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  width: double.infinity,
+                  child: Text(
+                    controller.result.value.isEmpty
+                        ? "Hasil akan muncul di sini..."
+                        : controller.result.value,
+                  ),
+                ),
+              )),
+            ),
+
+            Obx(() {
+              if (controller.isLoading.value) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                );
+              }
+              return SizedBox.shrink(); // Kosong jika tidak loading
+            }),
           ],
         ),
       ),
     );
-  }
-
-  // Widget helper untuk menampilkan hasil
-  Widget _buildResultArea() {
-    return Obx(() {
-      // Tampilkan spinner jika loading
-      if (controller.isLoading.value) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-
-      // Jangan tampilkan apa-apa jika hasil masih kosong
-      if (controller.resultText.value.isEmpty) {
-        return Center(
-          child: Text(
-            "Hasil akan muncul di sini...",
-            style: Get.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-          ),
-        );
-      }
-
-      // Tampilkan hasil jika sudah ada
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Hasil:",
-                style: Get.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              // Tombol untuk menyalin hasil
-              IconButton(
-                icon: const Icon(Icons.copy_all_outlined),
-                tooltip: "Salin Hasil",
-                onPressed: controller.copyToClipboard,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: SelectableText( // Agar teks bisa di-copy manual
-              controller.resultText.value,
-              style: Get.textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
-            ),
-          ),
-        ],
-      );
-    });
   }
 }
