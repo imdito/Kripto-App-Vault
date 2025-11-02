@@ -27,8 +27,8 @@ message_service = MessageService(db)
 def index():
     """Homepage API"""
     return jsonify({
-        'message': 'Kripto App API - MD5 Password Hashing + Steganography',
-        'version': '2.0',
+        'message': 'Kripto App API - MD5 + Steganography + File Encryption + Super Encrypt',
+        'version': '4.0',
         'security': 'MD5 Password Hashing',
         'endpoints': {
             'users': '/api/users',
@@ -39,8 +39,27 @@ def index():
             'test_db': '/api/test-db',
             'hash_password': '/api/hash-password',
             # Steganography Stateless API (No Database!)
-            'stego_encode': '/api/stego/encode',  # NEW! Upload gambar + pesan → return gambar hasil
-            'stego_decode': '/api/stego/decode',  # NEW! Upload gambar → return pesan
+            'stego_encode': '/api/stego/encode',  # Upload gambar + pesan → return gambar hasil
+            'stego_decode': '/api/stego/decode',  # Upload gambar → return pesan
+            # File Encryption Stateless API (No Database!)
+            'file_encrypt': '/api/file/encrypt',  # Upload file + password → return encrypted file
+            'file_decrypt': '/api/file/decrypt',  # Upload encrypted file + password → return original file
+            # Super Encrypt Stateless API (No Database!)
+            'super_encrypt': '/api/super-encrypt',  # Encrypt text: Caesar → Vigenere → DES
+            'super_decrypt': '/api/super-decrypt',  # Decrypt text: DES → Vigenere → Caesar
+            # Messaging API
+            'send_message': '/api/messages/send',  # POST - Kirim pesan
+            'inbox': '/api/messages/inbox',  # GET - Pesan masuk
+            'sent_messages': '/api/messages/sent',  # GET - Pesan terkirim
+            'message_detail': '/api/messages/<id>',  # GET - Detail pesan
+            'delete_message': '/api/messages/<id>',  # DELETE - Hapus pesan
+            'conversation': '/api/messages/conversation/<user_id>',  # GET - Percakapan dengan user
+            'search_messages': '/api/messages/search',  # GET - Cari pesan
+            'stego_encode': '/api/stego/encode',  # Upload gambar + pesan → return gambar hasil
+            'stego_decode': '/api/stego/decode',  # Upload gambar → return pesan
+            # File Encryption Stateless API (No Database!)
+            'file_encrypt': '/api/file/encrypt',  # Upload file + password → return encrypted file
+            'file_decrypt': '/api/file/decrypt',  # Upload encrypted file + password → return original file
             # Messaging API
             'send_message': '/api/messages/send',  # POST - Kirim pesan
             'inbox': '/api/messages/inbox',  # GET - Pesan masuk
@@ -786,6 +805,388 @@ def search_messages():
         }), 500
 
 
+# ==================== FILE ENCRYPTION API (STATELESS) ====================
+
+@app.route('/api/file/encrypt', methods=['POST'])
+def file_encrypt_stateless():
+    """
+    🔐 STATELESS FILE ENCRYPT - Encrypt file tanpa save ke database/server
+    
+    User upload file (base64) + password → return encrypted file (base64)
+    
+    Request Body:
+    {
+        "file_data": "base64_encoded_file",
+        "password": "mypassword123",
+        "filename": "dokumen.pdf"  (optional)
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "File berhasil dienkripsi",
+        "data": {
+            "encrypted_file": "base64_encrypted_data",
+            "original_size": 12345,
+            "encrypted_size": 12368,
+            "algorithm": "AES-256-CBC",
+            "filename": "dokumen.pdf.enc"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validasi input
+        if not data or not data.get('file_data') or not data.get('password'):
+            return jsonify({
+                'success': False,
+                'message': 'file_data dan password harus diisi'
+            }), 400
+        
+        file_base64 = data['file_data']
+        password = data['password']
+        filename = data.get('filename', 'file.enc')
+        
+        # Clean base64 string
+        if isinstance(file_base64, str):
+            if 'base64,' in file_base64:
+                file_base64 = file_base64.split('base64,')[1]
+            file_base64 = file_base64.strip().replace('\n', '').replace('\r', '')
+        
+        print(f"🔐 Encrypting file with password...")
+        
+        # Import AES encryption
+        from utils.aes_file_encryption import AESFileEncryption
+        import base64
+        
+        # Decode base64 to bytes
+        file_bytes = base64.b64decode(file_base64)
+        original_size = len(file_bytes)
+        
+        # Create AES cipher
+        aes = AESFileEncryption(password)
+        
+        # Encrypt (manual encryption tanpa file)
+        from Crypto.Cipher import AES
+        from Crypto.Util.Padding import pad
+        
+        cipher = AES.new(aes.key, AES.MODE_CBC)
+        ciphertext = cipher.encrypt(pad(file_bytes, AES.block_size))
+        
+        # Combine IV + ciphertext
+        encrypted_bytes = cipher.iv + ciphertext
+        
+        # Encode to base64
+        encrypted_base64 = base64.b64encode(encrypted_bytes).decode('utf-8')
+        
+        print(f"✅ File encrypted successfully!")
+        print(f"📊 Original: {original_size} bytes → Encrypted: {len(encrypted_bytes)} bytes")
+        
+        return jsonify({
+            'success': True,
+            'message': 'File berhasil dienkripsi',
+            'data': {
+                'encrypted_file': encrypted_base64,
+                'original_size': original_size,
+                'encrypted_size': len(encrypted_bytes),
+                'algorithm': 'AES-256-CBC',
+                'filename': filename + '.enc',
+                'note': 'Download file dengan decode base64 dan simpan dengan extension .enc'
+            }
+        }), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'ENCRYPTION_ERROR',
+            'message': f'Error saat enkripsi: {str(e)}'
+        }), 500
+
+
+@app.route('/api/file/decrypt', methods=['POST'])
+def file_decrypt_stateless():
+    """
+    🔓 STATELESS FILE DECRYPT - Decrypt file tanpa save ke database
+    
+    User upload encrypted file (base64) + password → return original file (base64)
+    
+    Request Body:
+    {
+        "file_data": "base64_encrypted_file",
+        "password": "mypassword123",
+        "filename": "dokumen.pdf.enc"  (optional)
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "File berhasil didekripsi",
+        "data": {
+            "decrypted_file": "base64_original_data",
+            "decrypted_size": 12345,
+            "algorithm": "AES-256-CBC",
+            "filename": "dokumen.pdf"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validasi input
+        if not data or not data.get('file_data') or not data.get('password'):
+            return jsonify({
+                'success': False,
+                'message': 'file_data dan password harus diisi'
+            }), 400
+        
+        file_base64 = data['file_data']
+        password = data['password']
+        filename = data.get('filename', 'file.enc')
+        
+        # Clean base64 string
+        if isinstance(file_base64, str):
+            if 'base64,' in file_base64:
+                file_base64 = file_base64.split('base64,')[1]
+            file_base64 = file_base64.strip().replace('\n', '').replace('\r', '')
+        
+        print(f"🔓 Decrypting file with password...")
+        
+        # Import AES encryption
+        from utils.aes_file_encryption import AESFileEncryption
+        import base64
+        from Crypto.Cipher import AES
+        from Crypto.Util.Padding import unpad
+        
+        # Decode base64 to bytes
+        encrypted_bytes = base64.b64decode(file_base64)
+        
+        # Extract IV (first 16 bytes) and ciphertext
+        iv = encrypted_bytes[:16]
+        ciphertext = encrypted_bytes[16:]
+        
+        # Create AES cipher
+        aes = AESFileEncryption(password)
+        cipher = AES.new(aes.key, AES.MODE_CBC, iv)
+        
+        # Decrypt
+        decrypted_bytes = unpad(cipher.decrypt(ciphertext), AES.block_size)
+        
+        # Encode to base64
+        decrypted_base64 = base64.b64encode(decrypted_bytes).decode('utf-8')
+        
+        # Remove .enc extension dari filename
+        original_filename = filename[:-4] if filename.endswith('.enc') else filename
+        
+        print(f"✅ File decrypted successfully!")
+        print(f"📊 Decrypted size: {len(decrypted_bytes)} bytes")
+        
+        return jsonify({
+            'success': True,
+            'message': 'File berhasil didekripsi',
+            'data': {
+                'decrypted_file': decrypted_base64,
+                'decrypted_size': len(decrypted_bytes),
+                'algorithm': 'AES-256-CBC',
+                'filename': original_filename,
+                'note': 'Download file dengan decode base64'
+            }
+        }), 200
+    
+    except ValueError as e:
+        # Wrong password or corrupted data
+        return jsonify({
+            'success': False,
+            'error_type': 'WRONG_PASSWORD',
+            'message': 'Password salah atau file rusak',
+            'details': str(e)
+        }), 400
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'DECRYPTION_ERROR',
+            'message': f'Error saat dekripsi: {str(e)}'
+        }), 500
+
+
+# ==================== SUPER ENCRYPT (STATELESS) ====================
+
+@app.route('/api/super-encrypt', methods=['POST'])
+def super_encrypt_text():
+    """
+    Super Encrypt - Triple layer encryption (Caesar → Vigenere → DES)
+    Stateless API - tidak menyimpan ke database
+    
+    Request Body (JSON):
+    {
+        "text": "Hello World",
+        "caesar_shift": 3,          // Optional, default: 3
+        "vigenere_key": "SECRET",   // Optional, default: "KEY"
+        "des_key": "mykey123"       // Optional, default: "secret12"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Text berhasil dienkripsi dengan Super Encrypt",
+        "data": {
+            "ciphertext": "base64_encrypted_text",
+            "iv": "base64_iv",
+            "original_length": 11,
+            "algorithm": "Caesar → Vigenere → DES"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required field
+        if not data or 'text' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Field "text" wajib diisi'
+            }), 400
+        
+        text = data['text']
+        caesar_shift = data.get('caesar_shift', 3)
+        vigenere_key = data.get('vigenere_key', 'KEY')
+        des_key = data.get('des_key', 'secret12')
+        
+        print(f"🔐 Super Encrypting: {text}")
+        print(f"   Caesar Shift: {caesar_shift}")
+        print(f"   Vigenere Key: {vigenere_key}")
+        print(f"   DES Key: {des_key}")
+        
+        # Import Super Encrypt
+        from utils.super_encrypt import SuperEncrypt
+        
+        # Encrypt with triple layer
+        cipher = SuperEncrypt(caesar_shift, vigenere_key, des_key)
+        result = cipher.encrypt(text)
+        
+        print(f"✅ Super Encryption successful!")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Text berhasil dienkripsi dengan Super Encrypt',
+            'data': {
+                'ciphertext': result['ciphertext'],
+                'iv': result['iv'],
+                'original_length': len(text),
+                'algorithm': 'Caesar → Vigenere → DES',
+                'note': 'Simpan ciphertext, iv, dan semua keys untuk dekripsi'
+            }
+        }), 200
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'ENCRYPTION_ERROR',
+            'message': f'Error saat super encrypt: {str(e)}'
+        }), 500
+
+
+@app.route('/api/super-decrypt', methods=['POST'])
+def super_decrypt_text():
+    """
+    Super Decrypt - Reverse triple layer decryption (DES → Vigenere → Caesar)
+    Stateless API - tidak menyimpan ke database
+    
+    Request Body (JSON):
+    {
+        "ciphertext": "base64_encrypted_text",
+        "iv": "base64_iv",
+        "caesar_shift": 3,          // Must match encryption
+        "vigenere_key": "SECRET",   // Must match encryption
+        "des_key": "mykey123"       // Must match encryption
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Text berhasil didekripsi",
+        "data": {
+            "plaintext": "Hello World",
+            "length": 11,
+            "algorithm": "DES → Vigenere → Caesar"
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': 'Request body tidak boleh kosong'
+            }), 400
+        
+        required_fields = ['ciphertext', 'iv', 'caesar_shift', 'vigenere_key', 'des_key']
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'message': f'Field wajib: {", ".join(missing_fields)}'
+            }), 400
+        
+        ciphertext = data['ciphertext']
+        iv = data['iv']
+        caesar_shift = data['caesar_shift']
+        vigenere_key = data['vigenere_key']
+        des_key = data['des_key']
+        
+        print(f"🔓 Super Decrypting...")
+        print(f"   Caesar Shift: {caesar_shift}")
+        print(f"   Vigenere Key: {vigenere_key}")
+        print(f"   DES Key: {des_key}")
+        
+        # Import Super Encrypt
+        from utils.super_encrypt import SuperEncrypt
+        
+        # Decrypt with triple layer (reverse)
+        cipher = SuperEncrypt(caesar_shift, vigenere_key, des_key)
+        encrypted_data = {
+            'ciphertext': ciphertext,
+            'iv': iv
+        }
+        plaintext = cipher.decrypt(encrypted_data)
+        
+        print(f"✅ Super Decryption successful!")
+        print(f"   Plaintext: {plaintext}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Text berhasil didekripsi',
+            'data': {
+                'plaintext': plaintext,
+                'length': len(plaintext),
+                'algorithm': 'DES → Vigenere → Caesar'
+            }
+        }), 200
+    
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error_type': 'WRONG_KEY',
+            'message': 'Key atau password salah',
+            'details': str(e)
+        }), 400
+    
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error_type': 'DECRYPTION_ERROR',
+            'message': f'Error saat super decrypt: {str(e)}'
+        }), 500
+
+
 # ==================== SERVER STARTUP ====================
 
 if __name__ == '__main__':
@@ -795,6 +1196,8 @@ if __name__ == '__main__':
     print("📌 Features:")
     print("   - User Authentication (MD5)")
     print("   - Stateless Steganography (LSB)")
+    print("   - Stateless File Encryption (AES)")
+    print("   - Stateless Super Encrypt (Caesar+Vigenere+DES)")
     print("   - Messaging System (Email-like)")
     config.display_config()
     print("="*50 + "\n")
