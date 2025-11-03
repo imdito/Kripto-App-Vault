@@ -44,6 +44,7 @@ dependencies:
   saver_gallery: ^4.0.1
   file_picker: ^10.3.3
   file_saver: ^0.3.1
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

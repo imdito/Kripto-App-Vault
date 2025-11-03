@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:kripto_app/homePage/home_page_controller.dart';
-import 'detail_massage_view.dart';
+import 'detailMessage/detail_massage_view.dart';
 
 class HomePageView extends GetView<HomePageController> {
 
@@ -22,7 +22,9 @@ class HomePageView extends GetView<HomePageController> {
         // Judul dari kode Anda (SESUAI PERMINTAAN)
         title: Text("Brankas id: ${id}"),
         actions: [
-          // Diganti jadi tombol REFRESH (untuk Inbox)
+          IconButton(onPressed:(){
+            Get.toNamed('/sent-history', arguments: id);
+          }, icon: const Icon(Icons.schedule_send)),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -114,13 +116,11 @@ class HomePageView extends GetView<HomePageController> {
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 onTap: () {
-                  Get.to(
-                        () => DetailMassageView(),
+                  Get.toNamed(
+                        '/detail-message',
                     arguments: {
-                      'senderUsername': message.senderUsername,
-                      'senderEmail': message.senderEmail,
-                      'messageText': message.messageText,
-                      'createdAt': message.createdAt,
+                      'messageId' : message.id,
+                      'userId' : id,
                     },
                   );
                 },
