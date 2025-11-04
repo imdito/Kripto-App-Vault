@@ -10,6 +10,7 @@ class SuperEncryptController extends GetxController {
   late TextEditingController caesarController;
   late TextEditingController vigenereController;
   late TextEditingController desController;
+  late TextEditingController ivController;
 
   // --- DEPENDENSI ---
   // Asumsi Anda sudah memiliki class service ini
@@ -29,6 +30,7 @@ class SuperEncryptController extends GetxController {
     caesarController = TextEditingController(text: '3');
     vigenereController = TextEditingController(text: 'KEY');
     desController = TextEditingController(text: 'secret12');
+    ivController = TextEditingController(text: '12345678');
   }
 
   @override
@@ -73,7 +75,13 @@ class SuperEncryptController extends GetxController {
     try {
       isLoading(true); // Mulai loading
 
-      final plaintext = await _service.decrypt(encryptedData.value!);
+      final plaintext = await _service.decrypt(
+        chiperText: textController.text,
+        caesarShift: int.parse(caesarController.text),
+        vigenereKey: vigenereController.text,
+        desKey: desController.text,
+        iv: ivController.text,
+      );
       result.value = '✅ Decrypted: $plaintext';
 
     } catch (e) {
@@ -83,11 +91,15 @@ class SuperEncryptController extends GetxController {
     }
   }
 
-  void copyResultToClipboard() {
+  void copyResultToClipboard(String type) {
     String? textToCopy;
     String snackbarMessage = "";
 
-    // Cek apakah hasil terakhir adalah enkripsi
+    if(type == 'iv') {
+      if (encryptedData.value != null && encryptedData.value!['iv'] != null) {
+        textToCopy = encryptedData.value!['iv'];
+      }
+    }else{
     if (encryptedData.value != null && result.value.startsWith('✅ Encrypted!')) {
       textToCopy = encryptedData.value!['ciphertext'];
       snackbarMessage = "Ciphertext disalin ke clipboard!";
@@ -98,7 +110,7 @@ class SuperEncryptController extends GetxController {
       textToCopy = result.value.replaceFirst('✅ Decrypted: ', '');
       snackbarMessage = "Plainteks disalin ke clipboard!";
     }
-
+  }
     // Lakukan aksi copy jika ada teks
     if (textToCopy != null) {
       Clipboard.setData(ClipboardData(text: textToCopy));

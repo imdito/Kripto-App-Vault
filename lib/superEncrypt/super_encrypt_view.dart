@@ -44,6 +44,11 @@ class SuperEncryptView extends GetView<SuperEncryptController> {
               decoration: InputDecoration(labelText: 'DES Key (8 chars)'),
             ),
             SizedBox(height: 16),
+            TextField(
+              controller: controller.ivController, // Gunakan controller
+              decoration: InputDecoration(labelText: 'iv (saat decrypt)'),
+            ),
+            SizedBox(height: 16),
 
             // Bungkus tombol dengan Obx untuk memantau isLoading
             Obx(() => Row(
@@ -72,7 +77,7 @@ class SuperEncryptView extends GetView<SuperEncryptController> {
             SizedBox(height: 16),
 
             GestureDetector(
-              onLongPress: ()=> controller.copyResultToClipboard(),
+              onLongPress: ()=> controller.copyResultToClipboard("Chipertext"),
               child: Obx(() => Card(
                 child: Container(
                   padding: EdgeInsets.all(16),
@@ -81,6 +86,20 @@ class SuperEncryptView extends GetView<SuperEncryptController> {
                     controller.result.value.isEmpty
                         ? "Hasil akan muncul di sini..."
                         : controller.result.value,
+                  ),
+                ),
+              )),
+            ),
+            GestureDetector(
+              onLongPress: ()=> controller.copyResultToClipboard("iv"),
+              child: Obx(() => Card(
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  width: double.infinity,
+                  child: Text(
+                    controller.result.value.isEmpty
+                        ? "iv akan muncul di sini..."
+                        : "iv: ${controller.encryptedData.value?['iv']}",
                   ),
                 ),
               )),
