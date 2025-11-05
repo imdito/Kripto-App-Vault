@@ -9,7 +9,7 @@ class SuperEncryptView extends GetView<SuperEncryptController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Super Encrypt (GetX)')),
+      appBar: AppBar(title: Text('Super Encrypt')),
       // Tambahkan SingleChildScrollView agar tidak overflow
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
@@ -41,7 +41,7 @@ class SuperEncryptView extends GetView<SuperEncryptController> {
             SizedBox(height: 8),
             TextField(
               controller: controller.desController, // Gunakan controller
-              decoration: InputDecoration(labelText: 'DES Key (8 chars)'),
+              decoration: InputDecoration(labelText: 'DES Key'),
             ),
             SizedBox(height: 16),
             TextField(
@@ -99,7 +99,9 @@ class SuperEncryptView extends GetView<SuperEncryptController> {
                   child: Text(
                     controller.result.value.isEmpty
                         ? "iv akan muncul di sini..."
-                        : "iv: ${controller.encryptedData.value?['iv']}",
+                        : controller.encryptedData.value?['iv'] == null
+                            ? "iv tidak tersedia"
+                            : "✅ iv: ${controller.encryptedData.value!['iv']}",
                   ),
                 ),
               )),

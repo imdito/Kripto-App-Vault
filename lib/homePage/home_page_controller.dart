@@ -44,7 +44,7 @@ class HomePageController extends GetxController {
       return;
     }
 
-    final Uri url = Uri.parse('$host/api/messages/inbox?user_id=$id&limit=5&offset=0');
+      final Uri url = Uri.parse('$host/api/messages/inbox?user_id=$id&limit=20&offset=0');
 
     try {
       isLoading(true);
@@ -90,7 +90,7 @@ class HomePageController extends GetxController {
           children: [
             const ListTile(
               title: Text(
-                'Tambah Item Rahasia Baru',
+                'Akses Fitur Aman',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -104,7 +104,7 @@ class HomePageController extends GetxController {
             ),
             ListTile(
               leading: const Icon(Icons.folder_outlined),
-              title: const Text('Upload File Aman'),
+              title: const Text('Enkrispi File Aman'),
               onTap: () {
                 Get.back();
                 Get.toNamed('/file-encrypt');

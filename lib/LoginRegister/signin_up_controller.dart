@@ -152,15 +152,12 @@ class SignInUpController extends GetxController {
       );
 
       // 4. Cek status kode balasan
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         // Sukses
         print("Data berhasil dikirim!");
         // Decode balasan JSON dari server
         final responseData = jsonDecode(response.body);
         print("Respon server: ${responseData['message']}");
-
-        // Navigate to home page
-        Get.offAllNamed(AppRoutes.home);
 
         Get.snackbar(
           'Registrasi Berhasil',

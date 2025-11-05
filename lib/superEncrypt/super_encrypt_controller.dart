@@ -68,7 +68,7 @@ class SuperEncryptController extends GetxController {
 
   Future<void> decrypt() async {
     if (encryptedData.value == null) {
-      result.value = '❌ No encrypted data!';
+      result.value = '❌ Data Belum Ada!';
       return;
     }
 
@@ -98,6 +98,13 @@ class SuperEncryptController extends GetxController {
     if(type == 'iv') {
       if (encryptedData.value != null && encryptedData.value!['iv'] != null) {
         textToCopy = encryptedData.value!['iv'];
+      }else{
+        Get.snackbar(
+          "Gagal Disalin",
+          "IV tidak tersedia untuk disalin!",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
       }
     }else{
     if (encryptedData.value != null && result.value.startsWith('✅ Encrypted!')) {

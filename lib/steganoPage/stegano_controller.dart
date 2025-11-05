@@ -36,6 +36,11 @@ class SteganographyController extends GetxController {
       return;
     }
 
+    if (baseUrl == null || baseUrl!.isEmpty) {
+      _showError('API_HOST tidak terkonfigurasi. Pastikan .env berisi API_HOST.');
+      return;
+    }
+
     isLoading(true); // Ganti setState
 
     try {
@@ -46,25 +51,53 @@ class SteganographyController extends GetxController {
       print('📤 Encoding message into image...');
 
       // 2. Send to API
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/stego/encode'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'image_data': base64Image,
-          'secret_message': messageController.text, // Ambil dari controller
-        }),
-      );
+      final uri = Uri.parse('$baseUrl/api/stego/encode');
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'image_data': base64Image,
+              'secret_message': messageController.text, // Ambil dari controller
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
-      if (response.statusCode == 200) {
+      final contentType = response.headers['content-type'] ?? '';
+      print('encode status=${response.statusCode} content-type=$contentType');
+
+      if (response.statusCode == 200 && contentType.contains('application/json')) {
         final data = jsonDecode(response.body);
-        final encodedImageBase64 = data['data']['encoded_image'];
+        final encodedImageBase64 = data['data']?['encoded_image'] as String?;
+        if (encodedImageBase64 == null || encodedImageBase64.isEmpty) {
+          _showError('Response tidak mengandung encoded_image');
+          return;
+        }
 
         // 3. Save encoded image to device
         await _saveEncodedImage(encodedImageBase64);
         _showSuccess('Gambar berhasil di-encode dan disimpan!');
       } else {
-        final error = jsonDecode(response.body);
-        _showError(error['message']);
+        // Coba parse JSON error jika memungkinkan
+        String message;
+        if (contentType.contains('application/json')) {
+          try {
+            final err = jsonDecode(response.body);
+            message = (err['message'] ?? err['error'] ?? 'Terjadi kesalahan').toString();
+          } catch (_) {
+            message = 'Gagal memproses respons dari server (status ${response.statusCode})';
+          }
+        } else {
+          // Non-JSON (misal HTML error page)
+          final snippet = response.body.length > 200
+              ? response.body.substring(0, 200)
+              : response.body;
+          message = 'Server mengembalikan non-JSON (status ${response.statusCode}).\n$snippet';
+        }
+        _showError(message);
       }
     } catch (e) {
       _showError('Error: $e');
@@ -80,6 +113,11 @@ class SteganographyController extends GetxController {
       return;
     }
 
+    if (baseUrl == null || baseUrl!.isEmpty) {
+      _showError('API_HOST tidak terkonfigurasi. Pastikan .env berisi API_HOST.');
+      return;
+    }
+
     isLoading(true); // Ganti setState
 
     try {
@@ -90,25 +128,54 @@ class SteganographyController extends GetxController {
       print('🔓 Decoding message from image...');
 
       // 2. Send to API
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/stego/decode'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'image_data': base64Image,
-        }),
-      );
+      final uri = Uri.parse('$baseUrl/api/stego/decode');
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'image_data': base64Image,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
-      if (response.statusCode == 200) {
+      final contentType = response.headers['content-type'] ?? '';
+      print('decode status=${response.statusCode} content-type=$contentType');
+
+      if (response.statusCode == 200 && contentType.contains('application/json')) {
         final data = jsonDecode(response.body);
-        final decodedMessage = data['data']['secret_message'];
+        final decodedMessage = data['data']?['secret_message']?.toString();
+
+        if (decodedMessage == null || decodedMessage.isEmpty) {
+          _showError('Tidak ada pesan rahasia ditemukan atau format respons tidak sesuai.');
+          return;
+        }
 
         // 3. Show message
         _showDialog('Pesan Rahasia Ditemukan!', decodedMessage);
       } else {
-        final error = jsonDecode(response.body);
-        _showError(error['message']);
+        // Tangani error non-JSON agar tidak FormatException
+        String message;
+        if (contentType.contains('application/json')) {
+          try {
+            final err = jsonDecode(response.body);
+            message = (err['message'] ?? err['error'] ?? 'Terjadi kesalahan').toString();
+          } catch (_) {
+            message = 'Gagal memproses respons dari server (status ${response.statusCode})';
+          }
+        } else {
+          final snippet = response.body.length > 200
+              ? response.body.substring(0, 200)
+              : response.body;
+          message = 'Server mengembalikan non-JSON (status ${response.statusCode}).\n$snippet';
+        }
+        _showError(message);
       }
     } catch (e) {
+      print("error decode: $e");
       _showError('Error: $e');
     } finally {
       isLoading(false); // Ganti setState
@@ -138,7 +205,7 @@ class SteganographyController extends GetxController {
 
       // Save to Gallery (visible to user!)
       try {
-        final result = await SaverGallery.saveImage(
+        await SaverGallery.saveImage(
           Uint8List.fromList(bytes),
           quality: 60,
           fileName: 'stego_${DateTime.now().millisecondsSinceEpoch}.png',

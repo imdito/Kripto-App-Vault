@@ -127,7 +127,7 @@ class FileEncryptController extends GetxController {
 
       if (result['success']) {
         final decryptedBase64 = result['data']['decrypted_file'];
-        final newFilename = result['data']['filename'];
+        final newFilename = "decrypted_${result['data']['filename']}";
 
         final decryptedFile = await _saveFile(decryptedBase64, newFilename);
 
@@ -143,6 +143,7 @@ class FileEncryptController extends GetxController {
         }
       }
     } catch (e) {
+      print('e decrypt: $e');
       _showError('Error: $e');
     } finally {
       isLoading(false);

@@ -40,23 +40,11 @@ class ProfileView extends GetView<ProfileController> {
             trailing: const Icon(Icons.chevron_right),
             onTap: controller.editProfile,
           ),
-          ListTile(
-            leading: const Icon(Icons.notifications_none),
-            title: const Text('Notifikasi'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: controller.goToNotifications,
-          ),
 
           const Divider(height: 30),
 
           // --- BAGIAN MENU KEAMANAN ---
           _buildSectionHeader("Keamanan"),
-          ListTile(
-            leading: const Icon(Icons.key_outlined),
-            title: const Text('Ubah Master PIN'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: controller.changeMasterPin,
-          ),
 
           // --- MENU TAMBAH BIOMETRIC ---
           Obx(() {

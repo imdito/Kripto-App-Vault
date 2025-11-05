@@ -27,7 +27,8 @@ class Registerview extends StatelessWidget {
         toolbarHeight: 159,
         backgroundColor: Color(0xFF117f4e),
       ),
-      body: Center(
+      body: Center
+        (
         child: SafeArea(
           child: SizedBox(
             width: 280,
@@ -51,45 +52,46 @@ class Registerview extends StatelessWidget {
                           ],
                         ),
                         Expanded(
-
                           child: TabBarView(
+                            physics: const BouncingScrollPhysics(),
                             children: [
+                              // Tab Masuk
                               SingleChildScrollView(
-                                key: PageStorageKey('tab-masuk'),
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
+                                key: const PageStorageKey('tab-masuk'),
+                                padding: const EdgeInsets.all(16),
+                                child: Form(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      SizedBox(height: 20),
-                                      Text(
+                                      const SizedBox(height: 20),
+                                      const Text(
                                         "Masuk",
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 20,
                                         ),
                                       ),
-                                      SizedBox(height: 40),
+                                      const SizedBox(height: 24),
                                       TextField(
                                         controller: loginemailC,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Email',
                                           contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
-                                      SizedBox(height: 20),
+                                      const SizedBox(height: 16),
                                       TextField(
                                         controller: loginpasswordC,
                                         obscureText: true,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Sandi',
                                           contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
-                                      SizedBox(height: 20),
-                                      Container(
+                                      const SizedBox(height: 20),
+                                      SizedBox(
                                         width: double.infinity,
                                         child: TextButton(
                                           onPressed: () {
@@ -118,12 +120,12 @@ class Registerview extends StatelessWidget {
                                               );
                                             }
                                           },
-                                          child: Text(
+                                          child: const Text(
                                             "Masuk",
                                             style: TextStyle(color: Colors.white),
                                           ),
                                           style: TextButton.styleFrom(
-                                            backgroundColor: Color.fromRGBO(
+                                            backgroundColor: const Color.fromRGBO(
                                               1,
                                               130,
                                               65,
@@ -141,61 +143,62 @@ class Registerview extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              // Tab Daftar
                               SingleChildScrollView(
-                                key: PageStorageKey('tab-daftar'),
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
+                                key: const PageStorageKey('tab-daftar'),
+                                padding: const EdgeInsets.all(16),
+                                child: Form(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      SizedBox(height: 20),
-                                      Text(
+                                      const SizedBox(height: 20),
+                                      const Text(
                                         "Daftar Akun",
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 20,
                                         ),
                                       ),
-                                      SizedBox(height: 40),
+                                      const SizedBox(height: 24),
                                       TextField(
                                         controller: regisusernameC,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'username',
                                           contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
-                                      SizedBox(height: 20),
+                                      const SizedBox(height: 16),
                                       TextField(
                                         controller: regisemailC,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Email',
                                           contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
-                                      SizedBox(height: 20),
+                                      const SizedBox(height: 16),
                                       TextField(
                                         controller: regispasswordC,
                                         obscureText: true,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Password',
                                           contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
-                                      SizedBox(height: 20),
+                                      const SizedBox(height: 16),
                                       TextField(
                                         controller: regisconfirmPasswordC,
                                         obscureText: true,
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           border: OutlineInputBorder(),
                                           labelText: 'Confirm Password',
                                           contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                                         ),
                                       ),
-                                      SizedBox(height: 20),
-                                      Container(
+                                      const SizedBox(height: 20),
+                                      SizedBox(
                                         width: double.infinity,
                                         child: TextButton(
                                           onPressed: () {
@@ -229,14 +232,18 @@ class Registerview extends StatelessWidget {
                                                 regispasswordC.text,
                                                 regisconfirmPasswordC.text,
                                               );
+                                              regisemailC.text = "";
+                                              regisusernameC.text = "";
+                                              regispasswordC.text = "";
+                                              regisconfirmPasswordC.text = "";
                                             }
                                           },
-                                          child: Text(
+                                          child: const Text(
                                             "Daftar",
                                             style: TextStyle(color: Colors.white),
                                           ),
                                           style: TextButton.styleFrom(
-                                            backgroundColor: Color.fromRGBO(
+                                            backgroundColor: const Color.fromRGBO(
                                               1,
                                               130,
                                               65,

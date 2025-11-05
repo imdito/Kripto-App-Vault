@@ -20,7 +20,7 @@ class HomePageView extends GetView<HomePageController> {
       // --- APPBAR ---
       appBar: AppBar(
         // Judul dari kode Anda (SESUAI PERMINTAAN)
-        title: Text("Brankas id: ${id}"),
+        title: Text("Daftar Pesan"),
         actions: [
           IconButton(onPressed:(){
             Get.toNamed('/sent-history', arguments: id);

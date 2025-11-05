@@ -75,13 +75,25 @@ class SendMessageController extends GetxController {
       return;
     }
 
+    if (currentUserId == null) {
+      _showError('User ID tidak ditemukan. Buka halaman ini dari menu yang benar.');
+      return;
+    }
+
+    if (host == null || host!.isEmpty) {
+      _showError('Konfigurasi API_HOST kosong. Pastikan file .env sudah diisi.');
+      return;
+    }
+
     isLoading(true);
 
     try {
       // 1. Buat Multipart Request
-      // GANTI '/api/messages/send' dengan endpoint Anda yang benar
       final url = Uri.parse('$host/api/messages/send');
       var request = http.MultipartRequest('POST', url);
+
+      // Jangan set header Content-Type ke application/json di Multipart!
+      // request.headers['Content-Type'] = 'multipart/form-data'; // http lib akan set otomatis
 
       // 2. Tambahkan field teks (sesuai 'Form-Data' di dokumentasi)
       request.fields['sender_id'] = currentUserId.toString();
@@ -105,19 +117,35 @@ class SendMessageController extends GetxController {
 
       // 5. Baca response
       final responseBody = await response.stream.bytesToString();
-      final result = jsonDecode(responseBody);
+
+      // Pastikan server mengembalikan JSON; jika tidak, tampilkan raw snippet
+      final contentType = response.headers['content-type'] ?? '';
+      Map<String, dynamic>? result;
+      try {
+        if (contentType.contains('application/json')) {
+          result = jsonDecode(responseBody) as Map<String, dynamic>;
+        } else {
+          throw const FormatException('Non-JSON response');
+        }
+      } catch (_) {
+        // Tampilkan potongan HTML / teks untuk debugging
+        final snippet = responseBody.length > 200
+            ? responseBody.substring(0, 200)
+            : responseBody;
+        throw Exception('Server tidak mengembalikan JSON (status ${response.statusCode}).\nCuplikan respons: $snippet');
+      }
 
       // 6. Cek hasil (Dokumentasi Anda menyebut 201, tapi bisa juga 200)
       if (response.statusCode == 201 || response.statusCode == 200) {
         if (result['success'] == true) {
           // --- BERHASIL ---
-          _showSuccess(result['message']);
+          _showSuccess(result['message'] ?? 'Pesan berhasil dikirim');
           messageController.clear();
           receiverController.clear();
           attachments.clear(); // Kosongkan list lampiran
         } else {
           // Server merespon 200/201 tapi 'success' false
-          throw Exception(result['message']);
+          throw Exception(result['message'] ?? 'Gagal mengirim pesan');
         }
       } else {
         // Gagal (misal: 400, 404, 500)
@@ -125,6 +153,8 @@ class SendMessageController extends GetxController {
       }
 
     } catch (e) {
+      print("Error saat mengirim pesan: $e");
+      print("error decode: $e"); // Ini yang terjadi pada Anda
       _showError(e.toString());
     } finally {
       isLoading(false); // Selesai loading
