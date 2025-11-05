@@ -55,7 +55,7 @@ class HomePageView extends GetView<HomePageController> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Gagal memuat pesan 😥\n${controller.errorMessage.value}",
+                    "Gagal memuat pesan 😥\nSilahkan Cek Koneksi Internet Anda.",
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.red),
                   ),

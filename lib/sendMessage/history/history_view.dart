@@ -24,7 +24,7 @@ class HistoryView extends GetView<HistoryController> {
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Text(
-                'Error: ${controller.errorMessage.value}',
+                'Error: Silahkan Cek Koneksi Internet Anda atau mungkin Server Mati :(',
                 textAlign: TextAlign.center,
               ),
             ),

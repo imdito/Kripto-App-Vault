@@ -133,12 +133,12 @@ class HistoryController extends GetxController {
           throw Exception(body['message'] ?? 'Gagal menghapus pesan');
         }
       } else {
-        throw Exception('Error: ${response.statusCode}');
+        throw Exception('Error: Gagal menghapus pesan. Server mungkin sedang tidak aktif :(');
       }
     } catch (e) {
       Get.snackbar(
         "Error",
-        e.toString(),
+        "Gagal menghapus pesan, coba lagi.\n",
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );

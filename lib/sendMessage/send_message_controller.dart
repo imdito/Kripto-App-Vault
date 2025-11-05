@@ -149,7 +149,7 @@ class SendMessageController extends GetxController {
         }
       } else {
         // Gagal (misal: 400, 404, 500)
-        throw Exception(result['message'] ?? 'Gagal mengirim. Status: ${response.statusCode}');
+        throw Exception(result['message'] ?? 'Gagal mengirim. Coba cek koneksinya yah :(');
       }
 
     } catch (e) {
